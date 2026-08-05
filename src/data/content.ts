@@ -197,17 +197,3 @@ export const interests = [
   },
 ]
 
-export type Certification = {
-  id: string
-  title: string
-  issuer: string
-  date: string
-  category: 'frontend' | 'ai_systems' | 'languages' | 'security'
-  skills: string[]
-  credentialId?: string
-  credentialUrl?: string
-  imageUrl: string
-  description: string
-  verified: boolean
-}
-
