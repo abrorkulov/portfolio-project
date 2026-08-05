@@ -1,0 +1,17 @@
+{
+  "short_name": "Jahongir.dev",
+  "name": "Jahongir Abrorkulov — Portfolio & Systems Lab",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#09090b",
+  "theme_color": "#09090b",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "description": "Frontend Engineering, Low-Level Systems Research, and AI Integration Portfolio of Jahongir Abrorkulov."
+}
