@@ -55,16 +55,40 @@ export const skillCategories: SkillCategory[] = [
       { name: 'TypeScript', level: 82 },
       { name: 'JavaScript', level: 90 },
       { name: 'Tailwind CSS', level: 85 },
+      { name: 'Next.js', level: 75 },
+      { name: 'Framer Motion', level: 70 },
     ],
   },
   {
-    label: 'Systems & Tools',
-    eyebrow: 'kernel_layer',
+    label: 'Backend',
+    eyebrow: 'server_layer',
     items: [
-      { name: 'Linux (Ubuntu)', level: 78 },
+      { name: 'C#', level: 75 },
+      { name: 'C++', level: 70 },
+      { name: '.NET', level: 72 },
+      { name: 'PHP', level: 65 },
+      { name: 'Node.js', level: 68 },
+    ],
+  },
+  {
+    label: 'AI & Systems',
+    eyebrow: 'intelligence_layer',
+    items: [
+      { name: 'AI Engineering', level: 78 },
+      { name: 'AI Prompting', level: 85 },
+      { name: 'System Integration', level: 72 },
+      { name: 'Reverse Engineering', level: 60 },
+    ],
+  },
+  {
+    label: 'Tools & DevOps',
+    eyebrow: 'workflow_layer',
+    items: [
       { name: 'Git', level: 80 },
-      { name: 'Architecture & Low-level Analysis', level: 65 },
-      { name: 'Networking Fundamentals', level: 60 },
+      { name: 'VS Code', level: 90 },
+      { name: 'Linux (Ubuntu)', level: 78 },
+      { name: 'Docker', level: 55 },
+      { name: 'Postman', level: 70 },
     ],
   },
 ]
@@ -179,21 +203,4 @@ export const projects: Project[] = [
   },
 ]
 
-export const interests = [
-  {
-    name: 'Counter-Strike 2',
-    detail: 'Counter-Strike 2 is a tactical first-person shooter developed by Valve.',
-    stats: { Faceit: '6 Lvl', hours: '1891', kdr: '1.13' },
-  },
-  {
-    name: 'GTA V',
-    detail: 'Open-world systems and the sheer scale of the simulation.',
-    stats: { completion: '58%', hours: '800', mode: 'Story + Online' },
-  },
-  {
-    name: 'Forza Horizon 5',
-    detail: 'Racing, car culture, and physics-driven gameplay.',
-    stats: { level: 'i don\'t know', cars: '25', hours: '98' },
-  },
-]
 

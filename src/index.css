@@ -62,6 +62,34 @@ body {
   color: transparent;
 }
 
+.text-gradient-warm {
+  background: linear-gradient(135deg, #f472b6, #a78bfa 50%, #818cf8);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.text-gradient-cool {
+  background: linear-gradient(135deg, #5eead4, #2dd4bf 50%, #14b8a6);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.text-gradient-sunset {
+  background: linear-gradient(135deg, #fbbf24, #f97316 50%, #ef4444);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.text-gradient-ocean {
+  background: linear-gradient(135deg, #60a5fa, #3b82f6 50%, #2563eb);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
 .glass-card {
   background: rgba(15, 15, 18, 0.6);
   backdrop-filter: blur(12px);

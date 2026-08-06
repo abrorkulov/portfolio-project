@@ -30,8 +30,8 @@ export default function Projects() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, margin: '-60px' }}
                 transition={{ duration: 0.6, delay: i * 0.1 }}
-                whileHover={{ y: -8 }}
-                className="group relative flex flex-col overflow-hidden glass-card glow-border rounded-2xl p-6"
+                whileHover={{ y: -8, rotate: 0.5 }}
+                className="group relative flex flex-col overflow-hidden glass-card glow-border rounded-2xl p-6 transition-all duration-300"
               >
                 <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-signal/10 blur-3xl transition-opacity group-hover:opacity-100 opacity-0" />
 
@@ -56,21 +56,26 @@ export default function Projects() {
                   </span>
                 </div>
 
-                <h3 className="font-display text-xl font-semibold leading-snug text-ink mb-3">
+                <motion.h3 
+                  whileHover={{ scale: 1.02 }}
+                  className="font-display text-xl font-semibold leading-snug text-gradient-ocean mb-3"
+                >
                   {project.title}
-                </h3>
+                </motion.h3>
                 <p className="flex-1 text-base leading-relaxed text-ink-muted">
                   {project.description}
                 </p>
 
                 <div className="mt-6 flex flex-wrap gap-2">
                   {project.stack.map((tech) => (
-                    <span
+                    <motion.span
                       key={tech}
-                      className="rounded-full bg-void-surface border border-white/5 px-3 py-1.5 font-mono text-xs text-ink-muted"
+                      whileHover={{ scale: 1.1, y: -2 }}
+                      whileTap={{ scale: 0.95 }}
+                      className="rounded-full bg-void-surface border border-white/5 px-3 py-1.5 font-mono text-xs text-ink-muted cursor-pointer hover:border-pulse/30 hover:text-pulse transition-all"
                     >
                       {tech}
-                    </span>
+                    </motion.span>
                   ))}
                 </div>
 
@@ -80,12 +85,19 @@ export default function Projects() {
                   className="absolute inset-0 flex items-center justify-center bg-void/90 backdrop-blur-sm opacity-0 transition-opacity"
                 >
                   <motion.button
-                    whileHover={{ scale: 1.05 }}
+                    whileHover={{ scale: 1.05, boxShadow: '0 0 30px rgba(94, 234, 212, 0.4)' }}
                     whileTap={{ scale: 0.95 }}
-                    className="glow-border rounded-full bg-signal/10 border border-signal/30 px-6 py-3 font-mono text-sm text-signal flex items-center gap-2"
+                    className="glow-border rounded-full bg-gradient-to-r from-signal/20 to-pulse/20 border border-signal/30 px-6 py-3 font-mono text-sm text-signal flex items-center gap-2 hover:from-signal/30 hover:to-pulse/30 transition-all relative overflow-hidden group"
                   >
-                    <ExternalLink className="h-4 w-4" />
-                    View Project
+                    <motion.div
+                      className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
+                      animate={{ x: ['-100%', '100%'] }}
+                      transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
+                    />
+                    <span className="relative z-10 flex items-center gap-2">
+                      <ExternalLink className="h-4 w-4" />
+                      View Project
+                    </span>
                   </motion.button>
                 </motion.div>
               </motion.article>

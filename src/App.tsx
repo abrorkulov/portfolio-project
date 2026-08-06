@@ -7,6 +7,9 @@ import Skills from './components/Skills'
 import Projects from './components/Projects'
 import Footer from './components/Footer'
 import ErrorBoundary from './components/ErrorBoundary'
+import LoadingScreen from './components/LoadingScreen'
+import ScrollProgress from './components/ScrollProgress'
+import ParticleBackground from './components/ParticleBackground'
 
 // Code splitting heavy interactive components for performance optimization
 const PacketRunner = lazy(() => import('./components/PacketRunner'))
@@ -27,6 +30,9 @@ function ComponentSkeleton({ height = 'h-64' }: { height?: string }) {
 export default function App() {
   return (
     <div id="top" className="relative min-h-screen overflow-x-hidden bg-void text-ink font-body">
+      <LoadingScreen />
+      <ParticleBackground />
+      <ScrollProgress />
       <Navbar />
       <main>
         <ErrorBoundary fallbackTitle="Hero Module Fault">

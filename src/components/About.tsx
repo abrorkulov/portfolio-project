@@ -51,12 +51,19 @@ export default function About() {
               </div>
               <ul className="space-y-3">
                 {profile.languages.map((lang) => (
-                  <li key={lang.name} className="flex items-center justify-between">
-                    <span className="text-sm text-ink">{lang.name}</span>
-                    <span className="glow-border rounded-full bg-signal/10 border border-signal/20 px-3 py-1 font-mono text-xs text-signal">
+                  <motion.li 
+                    key={lang.name} 
+                    whileHover={{ x: 5 }}
+                    className="flex items-center justify-between transition-transform"
+                  >
+                    <span className="text-sm text-ink group-hover:text-signal transition-colors">{lang.name}</span>
+                    <motion.span
+                      whileHover={{ scale: 1.1 }}
+                      className="glow-border rounded-full bg-signal/10 border border-signal/20 px-3 py-1 font-mono text-xs text-signal cursor-default"
+                    >
                       {lang.level}
-                    </span>
-                  </li>
+                    </motion.span>
+                  </motion.li>
                 ))}
               </ul>
             </motion.div>
@@ -78,22 +85,24 @@ export default function About() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true, margin: '-80px' }}
                   transition={{ duration: 0.6, delay: i * 0.1 }}
-                  className="glass-card glow-border rounded-2xl p-6"
+                  className="glass-card glow-border rounded-2xl p-6 group hover:border-pulse/30 transition-all duration-300"
                 >
                   <div className="flex items-center gap-3 mb-4">
                     <Icon className="h-5 w-5 text-pulse" />
-                    <h3 className="font-display font-semibold text-ink">
+                    <h3 className="font-display font-semibold text-gradient-warm">
                       {category.category}
                     </h3>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {category.items.map((item) => (
-                      <span
+                      <motion.span
                         key={item}
-                        className="rounded-full bg-void-surface border border-white/5 px-3 py-1.5 font-mono text-xs text-ink-muted"
+                        whileHover={{ scale: 1.1, y: -2 }}
+                        whileTap={{ scale: 0.95 }}
+                        className="rounded-full bg-void-surface border border-white/5 px-3 py-1.5 font-mono text-xs text-ink-muted cursor-pointer hover:border-signal/30 hover:text-signal transition-all"
                       >
                         {item}
-                      </span>
+                      </motion.span>
                     ))}
                   </div>
                 </motion.div>

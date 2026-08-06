@@ -50,11 +50,17 @@ export default function Hero() {
             transition={{ delay: 0.3, duration: 0.6 }}
             className="font-display text-4xl sm:text-6xl lg:text-7xl font-semibold leading-[1.1]"
           >
-            Frontend
+            <span className="bg-gradient-to-r from-signal via-signal-bright to-pulse bg-clip-text text-transparent">
+              Frontend
+            </span>
             <br />
-            <span className="text-gradient">& AI/Systems</span>
+            <span className="bg-gradient-to-r from-pulse via-signal to-signal-bright bg-clip-text text-transparent">
+              & AI/Systems
+            </span>
             <br />
-            Developer
+            <span className="bg-gradient-to-r from-ink to-signal bg-clip-text text-transparent">
+              Developer
+            </span>
           </motion.h1>
 
           <motion.div
@@ -93,7 +99,7 @@ export default function Hero() {
             transition={{ delay: 0.6, duration: 0.6 }}
             className="mt-6 sm:mt-8 text-base sm:text-xl leading-relaxed text-ink-muted"
           >
-            {profile.bio[0]}
+            <span className="text-gradient">{profile.bio[0]}</span>
           </motion.p>
 
           <motion.div
@@ -104,17 +110,22 @@ export default function Hero() {
           >
             <motion.a
               href="#projects"
-              whileHover={{ scale: 1.05 }}
+              whileHover={{ scale: 1.05, boxShadow: '0 0 30px rgba(94, 234, 212, 0.3)' }}
               whileTap={{ scale: 0.98 }}
-              className="glow-border rounded-full bg-gradient-to-r from-signal/20 to-pulse/20 border border-signal/30 px-6 py-3 sm:px-8 sm:py-3.5 font-mono text-xs sm:text-sm font-medium text-signal transition-all hover:from-signal/30 hover:to-pulse/30"
+              className="glow-border rounded-full bg-gradient-to-r from-signal/20 to-pulse/20 border border-signal/30 px-6 py-3 sm:px-8 sm:py-3.5 font-mono text-xs sm:text-sm font-medium text-signal transition-all hover:from-signal/30 hover:to-pulse/30 relative overflow-hidden group"
             >
-              View projects
+              <motion.div
+                className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
+                animate={{ x: ['-100%', '100%'] }}
+                transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
+              />
+              <span className="relative z-10">View projects</span>
             </motion.a>
             <motion.a
               href="#contact"
-              whileHover={{ scale: 1.05 }}
+              whileHover={{ scale: 1.05, borderColor: 'rgba(167, 139, 250, 0.5)' }}
               whileTap={{ scale: 0.98 }}
-              className="rounded-full glass-card border border-white/10 px-6 py-3 sm:px-8 sm:py-3.5 font-mono text-xs sm:text-sm text-ink transition-all hover:border-pulse/50 hover:text-pulse"
+              className="rounded-full glass-card border border-white/10 px-6 py-3 sm:px-8 sm:py-3.5 font-mono text-xs sm:text-sm text-ink transition-all hover:border-pulse/50 hover:text-pulse hover:bg-pulse/10"
             >
               Get in touch
             </motion.a>

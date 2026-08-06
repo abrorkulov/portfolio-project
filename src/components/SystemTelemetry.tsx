@@ -18,7 +18,7 @@ const metrics: Metric[] = [
 ]
 
 const systemInfo = [
-  { label: 'OS', value: 'Kali Linux / Ubuntu' },
+  { label: 'OS', value: 'Ubuntu' },
   { label: 'Kernel', value: '6.5.0-generic' },
   { label: 'Architecture', value: 'x86_64' },
   { label: 'Shell', value: 'zsh 5.9' },
