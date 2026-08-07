@@ -15,6 +15,7 @@ export default function ParticleBackground() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 })
   const particlesRef = useRef<Particle[]>([])
+  const [isMobile, setIsMobile] = useState(false)
 
   const colors = [
     'rgba(94, 234, 212,',   // signal
@@ -22,6 +23,13 @@ export default function ParticleBackground() {
     'rgba(99, 102, 241,',   // indigo
     'rgba(236, 72, 153,',   // pink
   ]
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768)
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -38,8 +46,8 @@ export default function ParticleBackground() {
     resizeCanvas()
     window.addEventListener('resize', resizeCanvas)
 
-    // Initialize particles with more variety
-    const particleCount = 80
+    // Initialize particles with more variety - reduced count on mobile
+    const particleCount = isMobile ? 30 : 80
     const particles: Particle[] = []
 
     for (let i = 0; i < particleCount; i++) {

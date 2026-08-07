@@ -4,6 +4,8 @@ import { Award, Maximize2, X, CheckCircle2, ShieldCheck, RotateCw, QrCode, Lock,
 import SectionHeader from './SectionHeader'
 import { certifications, Certification } from '../data/content'
 
+const isMobile = () => window.innerWidth < 768
+
 const categories = [
   { id: 'all', label: 'All Certificates' },
   { id: 'frontend', label: 'Frontend' },
@@ -22,22 +24,23 @@ function CertCard({
 }) {
   const [isFlipped, setIsFlipped] = useState(false)
   const cardRef = useRef<HTMLDivElement>(null)
+  const mobile = isMobile()
 
-  // Motion values for smooth 3D tilt
+  // Motion values for smooth 3D tilt - only on desktop
   const mouseX = useMotionValue(0)
   const mouseY = useMotionValue(0)
 
-  // Spring physics for natural 3D motion
+  // Spring physics for natural 3D motion - only on desktop
   const springConfig = { stiffness: 300, damping: 25 }
   const rotateX = useSpring(useTransform(mouseY, [-0.5, 0.5], [10, -10]), springConfig)
   const rotateY = useSpring(useTransform(mouseX, [-0.5, 0.5], [-10, 10]), springConfig)
 
-  // Specular sheen gradient position
+  // Specular sheen gradient position - only on desktop
   const sheenX = useSpring(useTransform(mouseX, [-0.5, 0.5], ['0%', '100%']), springConfig)
   const sheenY = useSpring(useTransform(mouseY, [-0.5, 0.5], ['0%', '100%']), springConfig)
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!cardRef.current) return
+    if (mobile || !cardRef.current) return
     const rect = cardRef.current.getBoundingClientRect()
     const width = rect.width
     const height = rect.height
@@ -48,22 +51,24 @@ function CertCard({
   }
 
   const handleMouseLeave = () => {
-    mouseX.set(0)
-    mouseY.set(0)
+    if (!mobile) {
+      mouseX.set(0)
+      mouseY.set(0)
+    }
   }
 
   return (
-    <div className="w-full sm:perspective-1000" style={{ perspective: '1200px' }}>
+    <div className="w-full sm:perspective-1000" style={{ perspective: mobile ? 'none' : '1200px' }}>
       <motion.div
         ref={cardRef}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
         style={{
-          rotateX: isFlipped ? 0 : rotateX,
-          rotateY: isFlipped ? 180 : rotateY,
-          transformStyle: 'preserve-3d',
+          rotateX: mobile ? 0 : (isFlipped ? 0 : rotateX),
+          rotateY: mobile ? 0 : (isFlipped ? 180 : rotateY),
+          transformStyle: mobile ? 'flat' : 'preserve-3d',
         }}
-        transition={{ duration: 0.6, ease: 'easeOut' }}
+        transition={{ duration: mobile ? 0.3 : 0.6, ease: 'easeOut' }}
         className="group relative flex min-h-[420px] flex-col justify-between overflow-hidden rounded-2xl border border-white/10 bg-void/90 glass-card transition-all duration-300 hover:border-signal/40 hover:shadow-xl hover:shadow-signal/10"
       >
         {/* Specular Shine Sweep on Hover */}

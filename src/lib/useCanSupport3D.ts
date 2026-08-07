@@ -16,8 +16,9 @@ function hasWebGL(): boolean {
  * Decides whether the 3D canvas should render, based on viewport width,
  * WebGL support, and the user's reduced-motion preference. Re-evaluates
  * on resize so rotating a tablet doesn't leave a stale decision.
+ * Increased threshold to 1024px to disable 3D on mobile devices for better performance.
  */
-export function useCanSupport3D(minWidth = 640) {
+export function useCanSupport3D(minWidth = 1024) {
   const [canSupport, setCanSupport] = useState(false)
 
   useEffect(() => {
