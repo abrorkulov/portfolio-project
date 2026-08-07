@@ -1,6 +1,7 @@
 // All portfolio copy and structured data lives here so components
 // stay presentational and reusable.
 
+// Trigger redeploy after removing certifications
 export const profile = {
   name: 'Jahongir Abrorkulov',
   role: 'Frontend & AI/Systems Developer',
