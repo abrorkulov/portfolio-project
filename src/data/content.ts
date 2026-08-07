@@ -203,4 +203,78 @@ export const projects: Project[] = [
   },
 ]
 
+export type Certification = {
+  id: string
+  title: string
+  description: string
+  issuer: string
+  date: string
+  category: string
+  verified: boolean
+  credentialId?: string
+  imageUrl: string
+  skills: string[]
+}
 
+export const certifications: Certification[] = [
+  {
+    id: '1',
+    title: 'Frontend Development Fundamentals',
+    description: 'Comprehensive course covering HTML, CSS, JavaScript fundamentals and modern frontend practices.',
+    issuer: 'MARS IT Space',
+    date: '2023',
+    category: 'frontend',
+    verified: true,
+    credentialId: 'MARS-FE-2023',
+    imageUrl: '/certificates/frontend.jpg',
+    skills: ['HTML', 'CSS', 'JavaScript', 'Responsive Design'],
+  },
+  {
+    id: '2',
+    title: 'AI Engineering Essentials',
+    description: 'Advanced AI prompting techniques, system integration, and machine learning fundamentals.',
+    issuer: "Najot Ta'lim",
+    date: '2026',
+    category: 'ai_systems',
+    verified: true,
+    credentialId: 'NAJOT-AI-2026',
+    imageUrl: '/certificates/ai-engineering.jpg',
+    skills: ['AI Prompting', 'System Integration', 'Machine Learning'],
+  },
+]
+
+export type Interest = {
+  name: string
+  detail: string
+  stats: Record<string, string | number>
+}
+
+export const interests: Interest[] = [
+  {
+    name: 'Counter-Strike 2',
+    detail: 'Competitive FPS gaming focused on tactical teamwork and precise mechanics.',
+    stats: {
+      rank: 'Global Elite',
+      hours: '2500+',
+      kdr: '1.8',
+    },
+  },
+  {
+    name: 'Forza Horizon 5',
+    detail: 'Open-world racing exploration and car collection.',
+    stats: {
+      completion: '85%',
+      cars: '450+',
+      level: '1200',
+    },
+  },
+  {
+    name: 'Rocket League',
+    detail: 'Physics-based competitive soccer with rocket-powered cars.',
+    stats: {
+      rank: 'Grand Champion',
+      hours: '1800+',
+      mode: '3v3 Standard',
+    },
+  },
+]

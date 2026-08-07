@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion'
 import SectionHeader from './SectionHeader'
-import { interests } from '../data/content'
+import { interests, Interest } from '../data/content'
 import { Gamepad2, Trophy, Clock, Target } from 'lucide-react'
 
 export default function Gaming() {
@@ -14,7 +14,7 @@ export default function Gaming() {
         />
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-          {interests.map((interest, i) => (
+          {interests.map((interest: Interest, i: number) => (
             <motion.div
               key={interest.name}
               initial={{ opacity: 0, y: 20 }}
@@ -62,7 +62,7 @@ export default function Gaming() {
                         </span>
                       </div>
                       <span className="font-mono text-sm text-signal font-semibold">
-                        {value}
+                        {String(value)}
                       </span>
                     </motion.div>
                   )

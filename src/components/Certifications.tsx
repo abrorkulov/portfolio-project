@@ -151,7 +151,7 @@ function CertCard({
             {/* Controls */}
             <div className="space-y-3 pt-3 border-t border-white/10">
               <div className="flex flex-wrap gap-1.5">
-                {cert.skills.map((skill) => (
+                {cert.skills.map((skill: string) => (
                   <span
                     key={skill}
                     className="rounded-md bg-white/5 border border-white/5 px-2 py-0.5 font-mono text-[10px] text-ink-muted"
@@ -255,7 +255,7 @@ export default function Certifications() {
   const [activeCategory, setActiveCategory] = useState<string>('all')
   const [selectedCert, setSelectedCert] = useState<Certification | null>(null)
 
-  const filteredCerts = certifications.filter((cert) => {
+  const filteredCerts = certifications.filter((cert: Certification) => {
     if (activeCategory === 'all') return true
     return cert.category === activeCategory
   })
@@ -318,7 +318,7 @@ export default function Certifications() {
         {/* Certifications Grid */}
         <motion.div layout className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-2">
           <AnimatePresence mode="popLayout">
-            {filteredCerts.map((cert) => (
+            {filteredCerts.map((cert: Certification) => (
               <motion.div
                 key={cert.id}
                 layout
@@ -417,7 +417,7 @@ export default function Certifications() {
                   <div>
                     <span className="font-mono text-xs text-ink-muted block mb-2">Verified Competencies:</span>
                     <div className="flex flex-wrap gap-1.5 sm:gap-2">
-                      {selectedCert.skills.map((skill) => (
+                      {selectedCert.skills.map((skill: string) => (
                         <span
                           key={skill}
                           className="rounded-lg bg-signal/10 border border-signal/20 px-2.5 py-1 font-mono text-xs text-signal"
