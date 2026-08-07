@@ -88,52 +88,61 @@ function CertCard({
           style={{ backfaceVisibility: 'hidden' }}
         >
           {/* Certificate Image Preview */}
-          <div
-            className="relative aspect-[16/10] sm:aspect-video w-full overflow-hidden bg-black/60 cursor-pointer"
-            onClick={() => onOpenModal(cert)}
-            tabIndex={0}
-            role="button"
-            aria-label={`Expand certificate: ${cert.title}`}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault()
-                onOpenModal(cert)
-              }
-            }}
-          >
-            <img
-              src={cert.imageUrl}
-              alt={cert.title}
-              loading="lazy"
-              className="h-full w-full object-cover object-center transition-transform duration-700 group-hover:scale-105"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-void via-void/20 to-transparent" />
-
-            {/* Badges Overlay */}
-            <div className="absolute top-3 left-3 right-3 flex items-center justify-between z-10 gap-2">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-void/85 backdrop-blur-md border border-signal/40 px-2.5 py-1 font-mono text-[10px] sm:text-[11px] text-signal shadow-lg">
-                <ShieldCheck className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-                {cert.verified ? 'Verified' : 'Certificate'}
-              </span>
-              <span className="rounded-full bg-void/85 backdrop-blur-md border border-white/10 px-2.5 py-1 font-mono text-[10px] sm:text-[11px] text-ink-muted">
-                {cert.date}
-              </span>
-            </div>
-
-            {/* Hover Expand Button */}
-            <div className="absolute inset-0 flex items-center justify-center bg-void/60 opacity-0 backdrop-blur-xs transition-opacity duration-300 group-hover:opacity-100 z-10">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation()
+          {cert.imageUrl ? (
+            <div
+              className="relative aspect-[16/10] sm:aspect-video w-full overflow-hidden bg-black/60 cursor-pointer"
+              onClick={() => onOpenModal(cert)}
+              tabIndex={0}
+              role="button"
+              aria-label={`Expand certificate: ${cert.title}`}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
                   onOpenModal(cert)
-                }}
-                className="inline-flex items-center gap-2 rounded-xl bg-signal px-4 py-2 font-mono text-xs font-semibold text-void shadow-xl transition-transform hover:scale-105"
-              >
-                <Eye className="h-4 w-4" />
-                Expand Photo
-              </button>
+                }
+              }}
+            >
+              <img
+                src={cert.imageUrl}
+                alt={cert.title}
+                loading="lazy"
+                className="h-full w-full object-cover object-center transition-transform duration-700 group-hover:scale-105"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-void via-void/20 to-transparent" />
+
+              {/* Badges Overlay */}
+              <div className="absolute top-3 left-3 right-3 flex items-center justify-between z-10 gap-2">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-void/85 backdrop-blur-md border border-signal/40 px-2.5 py-1 font-mono text-[10px] sm:text-[11px] text-signal shadow-lg">
+                  <ShieldCheck className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                  {cert.verified ? 'Verified' : 'Certificate'}
+                </span>
+                <span className="rounded-full bg-void/85 backdrop-blur-md border border-white/10 px-2.5 py-1 font-mono text-[10px] sm:text-[11px] text-ink-muted">
+                  {cert.date}
+                </span>
+              </div>
+
+              {/* Hover Expand Button */}
+              <div className="absolute inset-0 flex items-center justify-center bg-void/60 opacity-0 backdrop-blur-xs transition-opacity duration-300 group-hover:opacity-100 z-10">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onOpenModal(cert)
+                  }}
+                  className="inline-flex items-center gap-2 rounded-xl bg-signal px-4 py-2 font-mono text-xs font-semibold text-void shadow-xl transition-transform hover:scale-105"
+                >
+                  <Eye className="h-4 w-4" />
+                  Expand Photo
+                </button>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="relative aspect-[16/10] sm:aspect-video w-full overflow-hidden bg-black/60 flex items-center justify-center">
+              <div className="text-center">
+                <Award className="h-12 w-12 text-signal/50 mx-auto mb-2" />
+                <p className="font-mono text-xs text-ink-muted">Certificate image not available</p>
+              </div>
+            </div>
+          )}
 
           {/* Details */}
           <div className="p-4 sm:p-6 flex flex-col justify-between flex-1 space-y-4">
@@ -377,13 +386,22 @@ export default function Certifications() {
               {/* Modal Body */}
               <div className="overflow-y-auto p-4 sm:p-6 space-y-5 sm:space-y-6">
                 {/* Image */}
-                <div className="relative aspect-video w-full overflow-hidden rounded-xl border border-white/10 bg-black/60 shadow-xl">
-                  <img
-                    src={selectedCert.imageUrl}
-                    alt={selectedCert.title}
-                    className="h-full w-full object-contain"
-                  />
-                </div>
+                {selectedCert.imageUrl ? (
+                  <div className="relative aspect-video w-full overflow-hidden rounded-xl border border-white/10 bg-black/60 shadow-xl">
+                    <img
+                      src={selectedCert.imageUrl}
+                      alt={selectedCert.title}
+                      className="h-full w-full object-contain"
+                    />
+                  </div>
+                ) : (
+                  <div className="relative aspect-video w-full overflow-hidden rounded-xl border border-white/10 bg-black/60 shadow-xl flex items-center justify-center">
+                    <div className="text-center">
+                      <Award className="h-16 w-16 text-signal/50 mx-auto mb-3" />
+                      <p className="font-mono text-sm text-ink-muted">Certificate image not available</p>
+                    </div>
+                  </div>
+                )}
 
                 {/* Details */}
                 <div className="space-y-4">
