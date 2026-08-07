@@ -7,7 +7,6 @@ import Skills from './components/Skills'
 import Projects from './components/Projects'
 import Footer from './components/Footer'
 import ErrorBoundary from './components/ErrorBoundary'
-import LoadingScreen from './components/LoadingScreen'
 import ScrollProgress from './components/ScrollProgress'
 import ParticleBackground from './components/ParticleBackground'
 
@@ -30,7 +29,6 @@ function ComponentSkeleton({ height = 'h-64' }: { height?: string }) {
 export default function App() {
   return (
     <div id="top" className="relative min-h-screen overflow-x-hidden bg-void text-ink font-body">
-      <LoadingScreen />
       <ParticleBackground />
       <ScrollProgress />
       <Navbar />
