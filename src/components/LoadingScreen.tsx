@@ -4,25 +4,36 @@ import { useEffect, useState } from 'react'
 export default function LoadingScreen() {
   const [loading, setLoading] = useState(true)
   const [progress, setProgress] = useState(0)
+  const [isMobile, setIsMobile] = useState(false)
 
   useEffect(() => {
+    setIsMobile(window.innerWidth < 768)
+  }, [])
+
+  useEffect(() => {
+    // Skip loading screen entirely on mobile
+    if (isMobile) {
+      setLoading(false)
+      return
+    }
+
     const timer = setTimeout(() => {
       setLoading(false)
-    }, 3000)
-    
+    }, 1000) // Reduced from 3s to 1s
+
     // Simulate loading progress
     const progressInterval = setInterval(() => {
       setProgress(prev => {
         if (prev >= 100) return 100
-        return prev + Math.random() * 15
+        return prev + Math.random() * 20
       })
-    }, 200)
+    }, 100)
 
     return () => {
       clearTimeout(timer)
       clearInterval(progressInterval)
     }
-  }, [])
+  }, [isMobile])
 
   return (
     <AnimatePresence mode="wait">
