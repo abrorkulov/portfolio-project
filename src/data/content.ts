@@ -8,7 +8,7 @@ export const profile = {
   age: 15,
   location: 'Tashkent, Uzbekistan',
   bio: [
-    "I'm a 15-year-old Frontend & AI/Systems developer based in Tashkent, Uzbekistan, passionate about building high-performance web interfaces and understanding the systems underneath them.",
+    "I'm a 16-year-old Frontend & AI/Systems developer based in Tashkent, Uzbekistan, passionate about building high-performance web interfaces and understanding the systems underneath them.",
     'My expertise spans frontend engineering with React, TypeScript, and modern design systems, backend development with C#, C++, .NET, and PHP, and systems-level work with Ubuntu.',
     'Currently focused on AI Engineering at Najot Ta\'lim, with advanced skills in AI prompting and system integration. I believe in understanding technology at every layer—from pixels to kernel.',
   ],
