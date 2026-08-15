@@ -5,7 +5,7 @@
 export const profile = {
   name: 'Jahongir Abrorkulov',
   role: 'Frontend & AI/Systems Developer',
-  age: 15,
+  age: 16,
   location: 'Tashkent, Uzbekistan',
   bio: [
     "I'm a 16-year-old Frontend & AI/Systems developer based in Tashkent, Uzbekistan, passionate about building high-performance web interfaces and understanding the systems underneath them.",
