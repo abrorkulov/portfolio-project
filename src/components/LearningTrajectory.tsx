@@ -27,10 +27,17 @@ function CustomTooltip({
     <div className="rounded-lg border border-void-line bg-void-soft/95 px-4 py-3 font-mono text-xs shadow-glow backdrop-blur">
       <p className="mb-2 text-ink-muted">checkpoint · {label}</p>
       {payload.map((entry) => {
-        const legendEntry = trajectoryLegend.find((l) => l.key === entry.dataKey)
+        const legendEntry = trajectoryLegend.find(
+          (l) => l.key === entry.dataKey,
+        )
         return (
-          <div key={entry.dataKey} className="flex items-center justify-between gap-6">
-            <span style={{ color: entry.color }}>{legendEntry?.label ?? entry.dataKey}</span>
+          <div
+            key={entry.dataKey}
+            className="flex items-center justify-between gap-6"
+          >
+            <span style={{ color: entry.color }}>
+              {legendEntry?.label ?? entry.dataKey}
+            </span>
             <span className="text-ink">{entry.value}%</span>
           </div>
         )
@@ -41,7 +48,10 @@ function CustomTooltip({
 
 export default function LearningTrajectory() {
   return (
-    <section id="trajectory" className="relative border-t border-void-line py-24">
+    <section
+      id="trajectory"
+      className="relative border-t border-void-line py-24"
+    >
       <div className="mx-auto max-w-6xl px-6">
         <SectionHeader
           eyebrow="learning_trajectory"
@@ -58,7 +68,10 @@ export default function LearningTrajectory() {
         >
           <div className="h-[320px] w-full sm:h-[380px]">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={trajectory} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <AreaChart
+                data={trajectory}
+                margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+              >
                 <defs>
                   {trajectoryLegend.map((entry) => (
                     <linearGradient
@@ -69,22 +82,42 @@ export default function LearningTrajectory() {
                       x2="0"
                       y2="1"
                     >
-                      <stop offset="5%" stopColor={entry.color} stopOpacity={0.35} />
-                      <stop offset="95%" stopColor={entry.color} stopOpacity={0} />
+                      <stop
+                        offset="5%"
+                        stopColor={entry.color}
+                        stopOpacity={0.35}
+                      />
+                      <stop
+                        offset="95%"
+                        stopColor={entry.color}
+                        stopOpacity={0}
+                      />
                     </linearGradient>
                   ))}
                 </defs>
-                <CartesianGrid stroke="#1C2635" strokeDasharray="4 8" vertical={false} />
+                <CartesianGrid
+                  stroke="#1C2635"
+                  strokeDasharray="4 8"
+                  vertical={false}
+                />
                 <XAxis
                   dataKey="month"
                   stroke="#48556A"
-                  tick={{ fill: '#7C8B9C', fontSize: 12, fontFamily: 'JetBrains Mono' }}
+                  tick={{
+                    fill: '#7C8B9C',
+                    fontSize: 12,
+                    fontFamily: 'JetBrains Mono',
+                  }}
                   tickLine={false}
                   axisLine={{ stroke: '#1C2635' }}
                 />
                 <YAxis
                   stroke="#48556A"
-                  tick={{ fill: '#7C8B9C', fontSize: 12, fontFamily: 'JetBrains Mono' }}
+                  tick={{
+                    fill: '#7C8B9C',
+                    fontSize: 12,
+                    fontFamily: 'JetBrains Mono',
+                  }}
                   tickLine={false}
                   axisLine={false}
                   width={36}
@@ -93,7 +126,9 @@ export default function LearningTrajectory() {
                 <Tooltip content={<CustomTooltip />} />
                 <Legend
                   formatter={(value) => (
-                    <span className="font-mono text-xs text-ink-muted">{value}</span>
+                    <span className="font-mono text-xs text-ink-muted">
+                      {value}
+                    </span>
                   )}
                   iconType="circle"
                   iconSize={8}
@@ -128,7 +163,9 @@ export default function LearningTrajectory() {
               <p className="font-mono text-[11px] uppercase tracking-widest text-signal">
                 education
               </p>
-              <h3 className="mt-2 font-display text-lg font-medium">{edu.school}</h3>
+              <h3 className="mt-2 font-display text-lg font-medium">
+                {edu.school}
+              </h3>
               <p className="text-sm text-ink-muted">{edu.branch}</p>
               <p className="mt-2 text-sm text-ink-faint">{edu.detail}</p>
             </motion.div>

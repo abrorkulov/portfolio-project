@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 
 interface Particle {
   x: number
@@ -11,25 +11,28 @@ interface Particle {
   pulsePhase: number
 }
 
+const COLORS = [
+  'rgba(94, 234, 212,', // signal
+  'rgba(167, 139, 250,', // pulse
+  'rgba(99, 102, 241,', // indigo
+  'rgba(236, 72, 153,', // pink
+]
+
+const LINK_DISTANCE = 120
+const MOUSE_LINK_DISTANCE = 150
+const MOUSE_FORCE_DISTANCE = 200
+
+/**
+ * Ambient constellation canvas.
+ *
+ * Everything mutable — pointer position, particles, the animation handle —
+ * lives in refs. Keeping the pointer out of React state matters: driving it
+ * through `useState` re-ran this effect on every mousemove, which tore down
+ * the loop and re-seeded every particle at a random position dozens of times
+ * a second.
+ */
 export default function ParticleBackground() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 })
-  const particlesRef = useRef<Particle[]>([])
-  const [isMobile, setIsMobile] = useState(false)
-
-  const colors = [
-    'rgba(94, 234, 212,',   // signal
-    'rgba(167, 139, 250,',  // pulse
-    'rgba(99, 102, 241,',   // indigo
-    'rgba(236, 72, 153,',   // pink
-  ]
-
-  useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth < 768)
-    checkMobile()
-    window.addEventListener('resize', checkMobile)
-    return () => window.removeEventListener('resize', checkMobile)
-  }, [])
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -38,165 +41,184 @@ export default function ParticleBackground() {
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
-    const resizeCanvas = () => {
-      canvas.width = window.innerWidth
-      canvas.height = window.innerHeight
-    }
+    const prefersReducedMotion = window.matchMedia(
+      '(prefers-reduced-motion: reduce)',
+    ).matches
+    if (prefersReducedMotion) return
 
-    resizeCanvas()
-    window.addEventListener('resize', resizeCanvas)
-
-    // Initialize particles with more variety - reduced count on mobile
-    const particleCount = isMobile ? 30 : 80
     const particles: Particle[] = []
+    // Pointer starts off-screen so nothing is attracted before the first move.
+    const mouse = { x: -9999, y: -9999 }
+    let width = 0
+    let height = 0
+    let dpr = 1
 
-    for (let i = 0; i < particleCount; i++) {
-      particles.push({
-        x: Math.random() * canvas.width,
-        y: Math.random() * canvas.height,
-        vx: (Math.random() - 0.5) * 0.8,
-        vy: (Math.random() - 0.5) * 0.8,
-        size: Math.random() * 3 + 0.5,
-        alpha: Math.random() * 0.6 + 0.2,
-        color: colors[Math.floor(Math.random() * colors.length)],
-        pulsePhase: Math.random() * Math.PI * 2,
-      })
+    const seed = () => {
+      const count = width < 768 ? 28 : 70
+      particles.length = 0
+      for (let i = 0; i < count; i++) {
+        particles.push({
+          x: Math.random() * width,
+          y: Math.random() * height,
+          vx: (Math.random() - 0.5) * 0.8,
+          vy: (Math.random() - 0.5) * 0.8,
+          size: Math.random() * 2.5 + 0.5,
+          alpha: Math.random() * 0.5 + 0.2,
+          color: COLORS[Math.floor(Math.random() * COLORS.length)],
+          pulsePhase: Math.random() * Math.PI * 2,
+        })
+      }
     }
 
-    particlesRef.current = particles
+    const resize = () => {
+      const nextWidth = window.innerWidth
+      const nextHeight = window.innerHeight
+      // Only re-seed when the viewport genuinely changes size. Mobile browsers
+      // fire resize as the URL bar collapses, which would otherwise reshuffle
+      // the whole field mid-scroll.
+      const changed =
+        Math.abs(nextWidth - width) > 1 || Math.abs(nextHeight - height) > 80
 
-    const handleMouseMove = (e: MouseEvent) => {
-      setMousePosition({ x: e.clientX, y: e.clientY })
+      width = nextWidth
+      height = nextHeight
+      dpr = Math.min(window.devicePixelRatio || 1, 2)
+
+      canvas.width = Math.floor(width * dpr)
+      canvas.height = Math.floor(height * dpr)
+      canvas.style.width = `${width}px`
+      canvas.style.height = `${height}px`
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+
+      if (changed || particles.length === 0) seed()
     }
 
-    window.addEventListener('mousemove', handleMouseMove)
+    const handleMouseMove = (event: MouseEvent) => {
+      mouse.x = event.clientX
+      mouse.y = event.clientY
+    }
 
-    let animationFrame: number
-    let time = 0
+    const handleMouseLeave = () => {
+      mouse.x = -9999
+      mouse.y = -9999
+    }
 
-    const animate = () => {
-      time += 0.016
-      ctx.clearRect(0, 0, canvas.width, canvas.height)
+    resize()
+    window.addEventListener('resize', resize)
+    window.addEventListener('mousemove', handleMouseMove, { passive: true })
+    document.addEventListener('mouseleave', handleMouseLeave)
 
-      particlesRef.current.forEach((particle) => {
-        // Update position
+    let frame = 0
+    let paused = document.hidden
+
+    const handleVisibility = () => {
+      paused = document.hidden
+      if (!paused) frame = requestAnimationFrame(animate)
+    }
+    document.addEventListener('visibilitychange', handleVisibility)
+
+    function animate() {
+      if (!ctx || paused) return
+      ctx.clearRect(0, 0, width, height)
+
+      for (const particle of particles) {
         particle.x += particle.vx
         particle.y += particle.vy
 
-        // Bounce off edges
-        if (particle.x < 0 || particle.x > canvas.width) particle.vx *= -1
-        if (particle.y < 0 || particle.y > canvas.height) particle.vy *= -1
+        if (particle.x < 0 || particle.x > width) particle.vx *= -1
+        if (particle.y < 0 || particle.y > height) particle.vy *= -1
 
-        // Mouse interaction - stronger effect
-        const dx = mousePosition.x - particle.x
-        const dy = mousePosition.y - particle.y
-        const distance = Math.sqrt(dx * dx + dy * dy)
-        const maxDistance = 200
+        // Push away from the pointer. Guard the divide so a particle sitting
+        // exactly under the cursor doesn't turn its velocity into NaN.
+        const dx = mouse.x - particle.x
+        const dy = mouse.y - particle.y
+        const distance = Math.hypot(dx, dy)
 
-        if (distance < maxDistance) {
-          const force = (maxDistance - distance) / maxDistance
-          particle.vx -= (dx / distance) * force * 0.8
-          particle.vy -= (dy / distance) * force * 0.8
+        if (distance > 0.001 && distance < MOUSE_FORCE_DISTANCE) {
+          const force = (MOUSE_FORCE_DISTANCE - distance) / MOUSE_FORCE_DISTANCE
+          particle.vx -= (dx / distance) * force * 0.6
+          particle.vy -= (dy / distance) * force * 0.6
         }
 
-        // Apply friction
         particle.vx *= 0.99
         particle.vy *= 0.99
 
-        // Keep minimum movement
-        const speed = Math.sqrt(particle.vx * particle.vx + particle.vy * particle.vy)
+        const speed = Math.hypot(particle.vx, particle.vy)
         if (speed < 0.2) {
           particle.vx += (Math.random() - 0.5) * 0.1
           particle.vy += (Math.random() - 0.5) * 0.1
         }
 
-        // Pulse effect
         particle.pulsePhase += 0.05
         const pulse = (Math.sin(particle.pulsePhase) + 1) / 2
         const currentAlpha = particle.alpha * (0.5 + pulse * 0.5)
         const currentSize = particle.size * (0.8 + pulse * 0.4)
 
-        // Draw particle with glow
         ctx.beginPath()
         ctx.arc(particle.x, particle.y, currentSize, 0, Math.PI * 2)
         ctx.fillStyle = `${particle.color} ${currentAlpha})`
         ctx.fill()
+      }
 
-        // Draw glow effect
-        const gradient = ctx.createRadialGradient(
-          particle.x, particle.y, 0,
-          particle.x, particle.y, currentSize * 3
-        )
-        gradient.addColorStop(0, `${particle.color} ${currentAlpha * 0.5})`)
-        gradient.addColorStop(1, `${particle.color} 0)`)
-        ctx.beginPath()
-        ctx.arc(particle.x, particle.y, currentSize * 3, 0, Math.PI * 2)
-        ctx.fillStyle = gradient
-        ctx.fill()
-      })
+      // Links between neighbours. Indexed loops avoid allocating a sliced
+      // array per particle on every single frame.
+      ctx.lineWidth = 1
+      for (let i = 0; i < particles.length; i++) {
+        const a = particles[i]
+        for (let j = i + 1; j < particles.length; j++) {
+          const b = particles[j]
+          const dx = a.x - b.x
+          const dy = a.y - b.y
+          const distance = Math.hypot(dx, dy)
+          if (distance >= LINK_DISTANCE) continue
 
-      // Draw connections with gradient
-      particlesRef.current.forEach((particle, i) => {
-        particlesRef.current.slice(i + 1).forEach((otherParticle) => {
-          const dx = particle.x - otherParticle.x
-          const dy = particle.y - otherParticle.y
-          const distance = Math.sqrt(dx * dx + dy * dy)
-
-          if (distance < 120) {
-            const opacity = 0.15 * (1 - distance / 120)
-            
-            // Create gradient for connection
-            const gradient = ctx.createLinearGradient(
-              particle.x, particle.y,
-              otherParticle.x, otherParticle.y
-            )
-            gradient.addColorStop(0, `${particle.color} ${opacity})`)
-            gradient.addColorStop(1, `${otherParticle.color} ${opacity})`)
-            
-            ctx.beginPath()
-            ctx.moveTo(particle.x, particle.y)
-            ctx.lineTo(otherParticle.x, otherParticle.y)
-            ctx.strokeStyle = gradient
-            ctx.lineWidth = 1
-            ctx.stroke()
-          }
-        })
-      })
-
-      // Draw mouse connection lines
-      particlesRef.current.forEach((particle) => {
-        const dx = mousePosition.x - particle.x
-        const dy = mousePosition.y - particle.y
-        const distance = Math.sqrt(dx * dx + dy * dy)
-
-        if (distance < 150) {
-          const opacity = 0.2 * (1 - distance / 150)
+          const opacity = 0.14 * (1 - distance / LINK_DISTANCE)
           ctx.beginPath()
-          ctx.moveTo(particle.x, particle.y)
-          ctx.lineTo(mousePosition.x, mousePosition.y)
-          ctx.strokeStyle = `rgba(94, 234, 212, ${opacity})`
-          ctx.lineWidth = 0.5
+          ctx.moveTo(a.x, a.y)
+          ctx.lineTo(b.x, b.y)
+          ctx.strokeStyle = `${a.color} ${opacity})`
           ctx.stroke()
         }
-      })
+      }
 
-      animationFrame = requestAnimationFrame(animate)
+      // Links to the pointer.
+      if (mouse.x > -9998) {
+        ctx.lineWidth = 0.5
+        for (const particle of particles) {
+          const distance = Math.hypot(
+            mouse.x - particle.x,
+            mouse.y - particle.y,
+          )
+          if (distance >= MOUSE_LINK_DISTANCE) continue
+
+          const opacity = 0.2 * (1 - distance / MOUSE_LINK_DISTANCE)
+          ctx.beginPath()
+          ctx.moveTo(particle.x, particle.y)
+          ctx.lineTo(mouse.x, mouse.y)
+          ctx.strokeStyle = `rgba(94, 234, 212, ${opacity})`
+          ctx.stroke()
+        }
+      }
+
+      frame = requestAnimationFrame(animate)
     }
 
-    animate()
+    frame = requestAnimationFrame(animate)
 
     return () => {
-      window.removeEventListener('resize', resizeCanvas)
+      cancelAnimationFrame(frame)
+      window.removeEventListener('resize', resize)
       window.removeEventListener('mousemove', handleMouseMove)
-      cancelAnimationFrame(animationFrame)
+      document.removeEventListener('mouseleave', handleMouseLeave)
+      document.removeEventListener('visibilitychange', handleVisibility)
     }
-  }, [mousePosition])
+  }, [])
 
   return (
     <canvas
       ref={canvasRef}
-      className="fixed inset-0 pointer-events-none z-0"
-      style={{ opacity: 0.5 }}
+      aria-hidden="true"
+      className="pointer-events-none fixed inset-0 z-0"
+      style={{ opacity: 0.45 }}
     />
   )
 }

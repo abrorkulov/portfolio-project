@@ -4,12 +4,18 @@
  */
 export default function Hero3DFallback() {
   return (
-    <div className="absolute inset-0 flex items-center justify-center" aria-hidden="true">
+    <div
+      className="absolute inset-0 flex items-center justify-center"
+      aria-hidden="true"
+    >
       <div className="relative h-64 w-64 sm:h-80 sm:w-80">
         <div className="absolute inset-0 animate-[spin_20s_linear_infinite] rounded-full border border-signal/30" />
         <div className="absolute inset-6 animate-[spin_14s_linear_infinite_reverse] rounded-full border border-pulse/30" />
         <div className="absolute inset-14 animate-[spin_9s_linear_infinite] rounded-full border border-signal/40" />
-        <svg viewBox="0 0 200 200" className="absolute inset-0 h-full w-full opacity-70">
+        <svg
+          viewBox="0 0 200 200"
+          className="absolute inset-0 h-full w-full opacity-70"
+        >
           <polygon
             points="100,20 170,60 170,140 100,180 30,140 30,60"
             fill="none"

@@ -1,5 +1,14 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Gamepad2, Zap, RotateCcw, Flag, Volume2, VolumeX } from 'lucide-react'
+import {
+  Gamepad2,
+  Zap,
+  RotateCcw,
+  Flag,
+  Volume2,
+  VolumeX,
+  ChevronUp,
+} from 'lucide-react'
+import Panel from './Panel'
 
 interface Obstacle {
   x: number
@@ -128,11 +137,23 @@ export default function PacketRunner() {
     sparks: [],
   })
 
-  const playTone = (freq: number, duration: number, type: OscillatorType = 'square') => {
+  const playTone = (
+    freq: number,
+    duration: number,
+    type: OscillatorType = 'square',
+  ) => {
     if (!soundOnRef.current) return
     try {
       if (!audioCtxRef.current) {
-        audioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)()
+        const AudioCtor =
+          window.AudioContext ??
+          (
+            window as typeof window & {
+              webkitAudioContext?: typeof AudioContext
+            }
+          ).webkitAudioContext
+        if (!AudioCtor) return
+        audioCtxRef.current = new AudioCtor()
       }
       const ctx = audioCtxRef.current
       const osc = ctx.createOscillator()
@@ -233,12 +254,33 @@ export default function PacketRunner() {
     let obstacle: Obstacle
 
     if (roll < 0.42) {
-      obstacle = { x: canvasWidth + 40, width: 34, height: 34, y: GROUND_Y - 34, type: 'spike', passed: false }
+      obstacle = {
+        x: canvasWidth + 40,
+        width: 34,
+        height: 34,
+        y: GROUND_Y - 34,
+        type: 'spike',
+        passed: false,
+      }
     } else if (roll < 0.68) {
-      obstacle = { x: canvasWidth + 40, width: 56, height: 34, y: GROUND_Y - 34, type: 'double-spike', passed: false }
+      obstacle = {
+        x: canvasWidth + 40,
+        width: 56,
+        height: 34,
+        y: GROUND_Y - 34,
+        type: 'double-spike',
+        passed: false,
+      }
     } else {
       const h = 44 + Math.random() * 20
-      obstacle = { x: canvasWidth + 40, width: 38, height: h, y: GROUND_Y - h, type: 'block', passed: false }
+      obstacle = {
+        x: canvasWidth + 40,
+        width: 38,
+        height: h,
+        y: GROUND_Y - h,
+        type: 'block',
+        passed: false,
+      }
     }
     g.obstacles.push(obstacle)
   }
@@ -260,7 +302,10 @@ export default function PacketRunner() {
     g.zoom = Math.max(0, g.zoom - normalized * 0.6)
 
     // milestone chime
-    if (Math.floor(prevScore / CHECKPOINT_INTERVAL) !== Math.floor(g.score / CHECKPOINT_INTERVAL)) {
+    if (
+      Math.floor(prevScore / CHECKPOINT_INTERVAL) !==
+      Math.floor(g.score / CHECKPOINT_INTERVAL)
+    ) {
       playTone(660, 0.15, 'triangle')
       g.sparks.push({
         x: canvasWidth / 2,
@@ -283,7 +328,8 @@ export default function PacketRunner() {
     if (g.player.y >= GROUND_Y - g.player.size) {
       g.player.y = GROUND_Y - g.player.size
       g.player.velocityY = 0
-      if (!g.player.onGround) g.player.rotation = Math.round(g.player.rotation / 90) * 90
+      if (!g.player.onGround)
+        g.player.rotation = Math.round(g.player.rotation / 90) * 90
       g.player.onGround = true
     } else {
       g.player.rotation += 6 * normalized
@@ -296,7 +342,9 @@ export default function PacketRunner() {
       life: 18,
       maxLife: 18,
     })
-    g.trail = g.trail.map((t) => ({ ...t, life: t.life - normalized })).filter((t) => t.life > 0)
+    g.trail = g.trail
+      .map((t) => ({ ...t, life: t.life - normalized }))
+      .filter((t) => t.life > 0)
 
     g.obstacles.forEach((o) => {
       o.x -= g.speed * normalized
@@ -319,10 +367,21 @@ export default function PacketRunner() {
     g.obstacles = g.obstacles.filter((o) => o.x + o.width > -10)
 
     g.burst = g.burst
-      .map((p) => ({ ...p, x: p.x + p.vx * normalized, y: p.y + p.vy * normalized, life: p.life - normalized }))
+      .map((p) => ({
+        ...p,
+        x: p.x + p.vx * normalized,
+        y: p.y + p.vy * normalized,
+        life: p.life - normalized,
+      }))
       .filter((p) => p.life > 0)
 
-    g.sparks = g.sparks.map((s) => ({ ...s, y: s.y - normalized * 0.4, life: s.life - normalized })).filter((s) => s.life > 0)
+    g.sparks = g.sparks
+      .map((s) => ({
+        ...s,
+        y: s.y - normalized * 0.4,
+        life: s.life - normalized,
+      }))
+      .filter((s) => s.life > 0)
 
     g.shake = Math.max(0, g.shake - normalized * 1.2)
 
@@ -374,7 +433,14 @@ export default function PacketRunner() {
     }
   }
 
-  const drawSpike = (ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, theme: Theme) => {
+  const drawSpike = (
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    theme: Theme,
+  ) => {
     ctx.save()
     ctx.shadowColor = theme.accent2
     ctx.shadowBlur = 10
@@ -442,7 +508,13 @@ export default function PacketRunner() {
     ctx.fill()
     ctx.fillStyle = `${theme.accent}0d`
     ctx.beginPath()
-    ctx.arc(canvas.width * 0.2, canvas.height - 40, 100 * (0.7 + pulse * 0.3), 0, Math.PI * 2)
+    ctx.arc(
+      canvas.width * 0.2,
+      canvas.height - 40,
+      100 * (0.7 + pulse * 0.3),
+      0,
+      Math.PI * 2,
+    )
     ctx.fill()
 
     ctx.fillStyle = '#050507'
@@ -459,7 +531,8 @@ export default function PacketRunner() {
 
     ctx.fillStyle = `${theme.accent}1f`
     for (let i = 0; i < 24; i++) {
-      const blockX = (i * 46 - g.backgroundShift * 1.1) % (canvas.width + 46) - 46
+      const blockX =
+        ((i * 46 - g.backgroundShift * 1.1) % (canvas.width + 46)) - 46
       ctx.fillRect(blockX, GROUND_Y + 10, 26, 4)
     }
 
@@ -541,18 +614,28 @@ export default function PacketRunner() {
       ctx.fillStyle = '#e6edf3'
       ctx.textAlign = 'center'
       ctx.font = '700 32px "Space Grotesk", sans-serif'
-      ctx.fillText(g.gameOver ? 'SIGNAL LOST' : 'PACKET RUNNER', canvas.width / 2, canvas.height / 2 - 10)
+      ctx.fillText(
+        g.gameOver ? 'SIGNAL LOST' : 'PACKET RUNNER',
+        canvas.width / 2,
+        canvas.height / 2 - 10,
+      )
       ctx.font = '500 15px "JetBrains Mono", monospace'
       ctx.fillStyle = '#94a3b8'
       ctx.fillText(
-        g.gameOver ? 'Press Space or click to retry' : 'Press Space or click to start',
+        g.gameOver
+          ? 'Press Space or click to retry'
+          : 'Press Space or click to start',
         canvas.width / 2,
         canvas.height / 2 + 20,
       )
       if (g.gameOver && g.checkpointScore > 0) {
         ctx.fillStyle = theme.accent
         ctx.font = '600 13px "JetBrains Mono", monospace'
-        ctx.fillText('Press V to respawn at checkpoint', canvas.width / 2, canvas.height / 2 + 46)
+        ctx.fillText(
+          'Press V to respawn at checkpoint',
+          canvas.width / 2,
+          canvas.height / 2 + 46,
+        )
       }
       ctx.textAlign = 'start'
     }
@@ -621,35 +704,66 @@ export default function PacketRunner() {
   const theme = getTheme(gameRef.current.score)
 
   return (
-    <div className="glass-card glow-border rounded-2xl p-6">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-3">
-          <div className="rounded-lg bg-gradient-to-br from-signal/20 to-pulse/20 p-2 border border-signal/30">
-            <Gamepad2 className="h-5 w-5 text-signal" />
-          </div>
-          <div>
-            <h3 className="font-display font-semibold text-ink">Packet Runner</h3>
-            <p className="font-mono text-xs text-ink-muted">
-              Space/↑/W jump · C checkpoint · V respawn
-            </p>
-          </div>
+    <Panel
+      icon={Gamepad2}
+      title="Packet Runner"
+      subtitle="Tap or press Space to jump · C checkpoint · V respawn"
+      meta={
+        <>
+          <span className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 font-mono text-[11px] text-ink-muted">
+            <Zap className="h-3.5 w-3.5 text-signal" aria-hidden="true" />
+            Best {highScore}
+          </span>
+          <span className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 font-mono text-[11px] text-ink-muted">
+            <RotateCcw className="h-3.5 w-3.5 text-pulse" aria-hidden="true" />
+            Try #{attempts}
+          </span>
+        </>
+      }
+      actions={
+        <button
+          onClick={() => setSoundOn((s) => !s)}
+          className="grid h-9 w-9 place-items-center rounded-lg border border-white/10 bg-void-surface text-ink-muted transition-colors hover:text-signal"
+          aria-label={soundOn ? 'Mute sound effects' : 'Unmute sound effects'}
+          aria-pressed={soundOn}
+        >
+          {soundOn ? (
+            <Volume2 className="h-4 w-4" />
+          ) : (
+            <VolumeX className="h-4 w-4" />
+          )}
+        </button>
+      }
+    >
+      {/* Live HUD. Sits above the canvas rather than floating over it — the
+          old absolute overlay covered the runner itself on narrow screens. */}
+      <div className="mb-3 grid grid-cols-3 gap-2">
+        <div className="inset-surface rounded-xl px-3 py-2">
+          <span className="block font-mono text-[10px] uppercase tracking-wider text-ink-faint">
+            Score
+          </span>
+          <span className="font-mono text-sm font-semibold text-signal">
+            {displayScore}
+          </span>
         </div>
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <Zap className="h-4 w-4 text-signal" />
-            <span className="font-mono text-sm text-ink-muted">Best: {highScore}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <RotateCcw className="h-4 w-4 text-pulse" />
-            <span className="font-mono text-sm text-ink-muted">Try #{attempts}</span>
-          </div>
-          <button
-            onClick={() => setSoundOn((s) => !s)}
-            className="rounded-lg bg-void-surface border border-white/10 p-2 text-ink-muted hover:text-signal transition-colors"
-            aria-label="Toggle sound"
+        <div className="inset-surface rounded-xl px-3 py-2">
+          <span className="block font-mono text-[10px] uppercase tracking-wider text-ink-faint">
+            Speed
+          </span>
+          <span className="font-mono text-sm font-semibold text-pulse">
+            {(gameRef.current.speed / 7).toFixed(1)}x
+          </span>
+        </div>
+        <div className="inset-surface rounded-xl px-3 py-2">
+          <span className="block font-mono text-[10px] uppercase tracking-wider text-ink-faint">
+            Combo
+          </span>
+          <span
+            className="font-mono text-sm font-semibold"
+            style={{ color: displayCombo > 0 ? theme.accent2 : undefined }}
           >
-            {soundOn ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
-          </button>
+            {displayCombo > 0 ? `${displayCombo}x` : '—'}
+          </span>
         </div>
       </div>
 
@@ -658,44 +772,16 @@ export default function PacketRunner() {
           ref={canvasRef}
           width={960}
           height={320}
-          className="w-full rounded-lg border border-white/5 bg-void cursor-pointer"
+          // aspect-ratio keeps the drawing buffer and the CSS box in step, so
+          // the game never letterboxes or stretches as the column resizes.
+          className="w-full cursor-pointer rounded-xl border border-white/5 bg-void"
+          style={{ aspectRatio: '3 / 1' }}
           onClick={jump}
+          aria-label="Packet Runner game area. Tap or press space to jump."
         />
 
-        <div className="absolute top-4 left-4 flex gap-4">
-          <div className="glass-card rounded-lg px-4 py-2 border border-white/5">
-            <span className="font-mono text-xs text-ink-muted">Score</span>
-            <span className="font-mono text-sm text-signal ml-2">{displayScore}</span>
-          </div>
-          <div className="glass-card rounded-lg px-4 py-2 border border-white/5">
-            <span className="font-mono text-xs text-ink-muted">Speed</span>
-            <span className="font-mono text-sm text-pulse ml-2">
-              {(gameRef.current.speed / 7).toFixed(1)}x
-            </span>
-          </div>
-          {displayCombo > 0 && (
-            <div className="glass-card rounded-lg px-4 py-2 border border-white/5">
-              <span className="font-mono text-xs text-ink-muted">Combo</span>
-              <span className="font-mono text-sm ml-2" style={{ color: theme.accent2 }}>
-                {displayCombo}x
-              </span>
-            </div>
-          )}
-        </div>
-
-        <div className="absolute top-4 right-4 flex gap-2">
-          <button
-            onClick={placeCheckpoint}
-            className="glass-card rounded-lg px-3 py-2 border border-white/5 flex items-center gap-2 font-mono text-xs text-ink-muted hover:text-signal transition-colors"
-            title="Place checkpoint (C)"
-          >
-            <Flag className="h-3.5 w-3.5" />
-            {hasCheckpoint ? 'Checkpoint set' : 'Set checkpoint'}
-          </button>
-        </div>
-
         {isGameOver && (
-          <div className="absolute bottom-4 right-4 flex gap-2">
+          <div className="absolute bottom-3 right-3 flex flex-wrap justify-end gap-2">
             {hasCheckpoint && (
               <button
                 onClick={respawnAtCheckpoint}
@@ -707,7 +793,7 @@ export default function PacketRunner() {
             )}
             <button
               onClick={jump}
-              className="glow-border rounded-full bg-signal/10 border border-signal/30 px-5 py-2.5 font-mono text-xs text-signal flex items-center gap-2 hover:bg-signal/20 transition-colors"
+              className="glow-border flex items-center gap-2 rounded-full border border-signal/30 bg-signal/10 px-5 py-2.5 font-mono text-xs text-signal transition-colors hover:bg-signal/20"
             >
               <RotateCcw className="h-3.5 w-3.5" />
               Retry
@@ -715,6 +801,36 @@ export default function PacketRunner() {
           </div>
         )}
       </div>
-    </div>
+
+      {/* Touch controls. The keyboard shortcuts are unreachable on a phone, so
+          every action gets a real button sized for a thumb. */}
+      <div className="mt-3 flex flex-wrap gap-2">
+        <button
+          onClick={jump}
+          className="flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-xl border border-signal/25 bg-signal/10 px-4 font-mono text-xs text-signal transition-colors hover:bg-signal/20 sm:flex-none sm:px-6"
+        >
+          <ChevronUp className="h-4 w-4" aria-hidden="true" />
+          Jump
+        </button>
+        <button
+          onClick={placeCheckpoint}
+          className="flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-4 font-mono text-xs text-ink-muted transition-colors hover:border-white/25 hover:text-ink"
+          title="Place checkpoint (C)"
+        >
+          <Flag className="h-4 w-4" aria-hidden="true" />
+          {hasCheckpoint ? 'Checkpoint set' : 'Set checkpoint'}
+        </button>
+        {hasCheckpoint && (
+          <button
+            onClick={respawnAtCheckpoint}
+            className="flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-4 font-mono text-xs text-ink-muted transition-colors hover:border-white/25 hover:text-ink"
+            title="Respawn at checkpoint (V)"
+          >
+            <RotateCcw className="h-4 w-4" aria-hidden="true" />
+            Respawn
+          </button>
+        )}
+      </div>
+    </Panel>
   )
 }

@@ -1,144 +1,314 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* Fonts are linked from index.html with preconnect, so they start downloading
+   before this stylesheet is even parsed. An @import here would have queued
+   them behind the CSS and delayed first paint. */
 
-html {
-  scroll-behavior: smooth;
-}
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+    /* Stops the rubber-band bounce revealing a white gutter behind the page
+       on iOS and Chrome Android. */
+    overscroll-behavior-y: none;
+  }
 
-body {
-  background-color: #09090b;
-  background-image:
-    radial-gradient(circle at 15% 10%, rgba(94, 234, 212, 0.04), transparent 50%),
-    radial-gradient(circle at 85% 0%, rgba(167, 139, 250, 0.05), transparent 50%),
-    radial-gradient(circle at 50% 100%, rgba(94, 234, 212, 0.02), transparent 50%);
-}
+  body {
+    background-color: #09090b;
+    background-image:
+      radial-gradient(circle at 15% 10%, rgba(94, 234, 212, 0.05), transparent 45%),
+      radial-gradient(circle at 85% 0%, rgba(167, 139, 250, 0.06), transparent 45%),
+      radial-gradient(circle at 50% 100%, rgba(94, 234, 212, 0.03), transparent 50%);
+    background-attachment: fixed;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    /* Never let a stray wide child create a horizontal scrollbar on phones. */
+    overflow-x: hidden;
+  }
 
-::selection {
-  background-color: rgba(94, 234, 212, 0.3);
-  color: #e6edf3;
-}
+  /* A very fine grain over the whole page. Large flat dark surfaces band
+     badly on cheap panels and read as "empty"; noise this subtle isn't
+     consciously visible but gives the background material. */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    opacity: 0.035;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
 
-::-webkit-scrollbar {
-  width: 8px;
-}
-::-webkit-scrollbar-track {
-  background: #09090b;
-}
-::-webkit-scrollbar-thumb {
-  background: #1a1a1f;
-  border-radius: 4px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #2dd4bf66;
-}
+  /* Headings track tighter than body copy at display sizes. */
+  h1,
+  h2,
+  h3 {
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+  }
 
-/* Reduced motion support */
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.001ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.001ms !important;
-    scroll-behavior: auto !important;
+  p {
+    text-wrap: pretty;
+  }
+
+  /* Media should never be able to push the page sideways. */
+  img,
+  svg,
+  canvas {
+    max-width: 100%;
+  }
+
+  ::selection {
+    background-color: rgba(94, 234, 212, 0.3);
+    color: #e6edf3;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #09090b;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #23232b;
+    border: 2px solid #09090b;
+    border-radius: 999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #2dd4bf88;
+  }
+
+  /* Firefox */
+  * {
+    scrollbar-color: #23232b #09090b;
+    scrollbar-width: thin;
+  }
+
+  *:focus-visible {
+    outline: 2px solid #5eead4;
+    outline-offset: 3px;
+    border-radius: 4px;
+  }
+
+  /* Fixed navbar clearance for anchor jumps. */
+  section[id],
+  footer[id] {
+    scroll-margin-top: 5.5rem;
+  }
+
+  /* Touch targets: anything tappable clears the 44px accessibility floor,
+     and taps don't flash a grey box on Android. */
+  button,
+  a,
+  input,
+  textarea,
+  select {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Inputs at <16px make iOS Safari zoom the whole page on focus. */
+  @media (max-width: 640px) {
+    input,
+    textarea,
+    select {
+      font-size: 16px;
+    }
   }
 }
 
-.grid-overlay {
-  background-image:
-    linear-gradient(to right, #1a1a1f33 1px, transparent 1px),
-    linear-gradient(to bottom, #1a1a1f33 1px, transparent 1px);
-  background-size: 64px 64px;
+@layer components {
+  .grid-overlay {
+    background-image:
+      linear-gradient(to right, #1a1a1f33 1px, transparent 1px),
+      linear-gradient(to bottom, #1a1a1f33 1px, transparent 1px);
+    background-size: 64px 64px;
+    /* Fade the grid out toward the edges instead of cutting it off hard. */
+    -webkit-mask-image: radial-gradient(ellipse at center, #000 30%, transparent 78%);
+    mask-image: radial-gradient(ellipse at center, #000 30%, transparent 78%);
+  }
+
+  .text-gradient {
+    background: linear-gradient(135deg, #99f6e4, #5eead4 50%, #a78bfa);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .text-gradient-warm {
+    background: linear-gradient(135deg, #f472b6, #a78bfa 50%, #818cf8);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .text-gradient-cool {
+    background: linear-gradient(135deg, #99f6e4, #5eead4 55%, #2dd4bf);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .text-gradient-sunset {
+    background: linear-gradient(135deg, #fbbf24, #f97316 50%, #ef4444);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .text-gradient-ocean {
+    background: linear-gradient(135deg, #a5d8ff, #60a5fa 50%, #818cf8);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .glass-card {
+    background: rgba(15, 15, 18, 0.55);
+    backdrop-filter: blur(14px) saturate(140%);
+    -webkit-backdrop-filter: blur(14px) saturate(140%);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    /* Top inner highlight + drop shadow reads as a lit edge, which is what
+       separates the card from the background on a near-black page. */
+    box-shadow:
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.05),
+      0 8px 32px rgba(0, 0, 0, 0.35);
+  }
+
+  .glass-border {
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  /* Section separator. A plain border-t runs edge to edge and chops the page
+     into hard slabs; this fades out toward both margins. */
+  .section-rule {
+    position: relative;
+  }
+
+  .section-rule::before {
+    content: '';
+    position: absolute;
+    inset-inline: 0;
+    top: 0;
+    height: 1px;
+    background: linear-gradient(
+      to right,
+      transparent,
+      rgba(255, 255, 255, 0.09) 15%,
+      rgba(94, 234, 212, 0.18) 50%,
+      rgba(255, 255, 255, 0.09) 85%,
+      transparent
+    );
+  }
+
+  /* Numbered section index used by SectionHeader. */
+  .section-index {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Inset editor/console surface shared by the playground widgets. */
+  .inset-surface {
+    background: rgba(9, 9, 11, 0.72);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    box-shadow: inset 0 1px 0 0 rgba(0, 0, 0, 0.4);
+  }
+
+  /* Gradient hairline that fades in on hover, drawn with a mask so it hugs
+     whatever border-radius the element already has. */
+  .glow-border {
+    position: relative;
+  }
+
+  .glow-border::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(135deg, rgba(94, 234, 212, 0.35), rgba(167, 139, 250, 0.35));
+    -webkit-mask:
+      linear-gradient(#fff 0 0) content-box,
+      linear-gradient(#fff 0 0);
+    mask:
+      linear-gradient(#fff 0 0) content-box,
+      linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+  }
+
+  .glow-border:hover::before {
+    opacity: 1;
+  }
+
+  /* Skill cards tint their own halo from the brand colour each card sets
+     as --brand, so the grid picks up React blue, Docker blue, Ubuntu orange
+     and so on instead of one flat accent. */
+  .skill-card {
+    --brand: #5eead4;
+  }
+
+  .skill-card::after {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    background: radial-gradient(120% 100% at 50% 0%, var(--brand), transparent 62%);
+    opacity: 0;
+    transition: opacity 0.35s ease;
+    pointer-events: none;
+    mix-blend-mode: soft-light;
+  }
+
+  .skill-card:hover::after,
+  .skill-card:focus-within::after {
+    opacity: 0.55;
+  }
+
+  /* Visually hidden but still announced by screen readers. */
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+  }
+
+  /* Horizontal scrollers (the skills filter row) shouldn't show a bar. */
+  .scrollbar-none {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Keeps fixed UI clear of the iPhone home indicator. */
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .skeleton-shimmer {
+    background: linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.03) 25%,
+      rgba(94, 234, 212, 0.08) 50%,
+      rgba(255, 255, 255, 0.03) 75%
+    );
+    background-size: 200% 100%;
+    animation: cyber-shimmer 2s infinite ease-in-out;
+  }
 }
 
-.text-gradient {
-  background: linear-gradient(135deg, #99f6e4, #5eead4 50%, #a78bfa);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-
-.text-gradient-warm {
-  background: linear-gradient(135deg, #f472b6, #a78bfa 50%, #818cf8);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-
-.text-gradient-cool {
-  background: linear-gradient(135deg, #5eead4, #2dd4bf 50%, #14b8a6);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-
-.text-gradient-sunset {
-  background: linear-gradient(135deg, #fbbf24, #f97316 50%, #ef4444);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-
-.text-gradient-ocean {
-  background: linear-gradient(135deg, #60a5fa, #3b82f6 50%, #2563eb);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-
-.glass-card {
-  background: rgba(15, 15, 18, 0.6);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-}
-
-.glass-border {
-  border: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.glow-border {
-  position: relative;
-}
-
-.glow-border::before {
-  content: '';
-  position: absolute;
-  inset: -1px;
-  border-radius: inherit;
-  padding: 1px;
-  background: linear-gradient(135deg, rgba(94, 234, 212, 0.3), rgba(167, 139, 250, 0.3));
-  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  opacity: 0;
-  transition: opacity 0.3s ease;
-  pointer-events: none;
-}
-
-.glow-border:hover::before {
-  opacity: 1;
-}
-
-/* Accessibility Focus Visible Ring */
-*:focus-visible {
-  outline: 2px solid #5eead4 !important;
-  outline-offset: 3px !important;
-  border-radius: 4px;
-}
-
-/* Scroll Offset for Fixed Navbar */
-section[id] {
-  scroll-margin-top: 5rem;
-}
-
-/* Skeleton Loading Shimmer */
 @keyframes cyber-shimmer {
   0% {
     background-position: -200% 0;
@@ -148,9 +318,18 @@ section[id] {
   }
 }
 
-.skeleton-shimmer {
-  background: linear-gradient(90deg, rgba(255, 255, 255, 0.03) 25%, rgba(94, 234, 212, 0.08) 50%, rgba(255, 255, 255, 0.03) 75%);
-  background-size: 200% 100%;
-  animation: cyber-shimmer 2s infinite ease-in-out;
-}
+/* Reduced motion: strip animation, but keep hover/opacity transitions usable. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
 
+  html {
+    scroll-behavior: auto;
+  }
+}

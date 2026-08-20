@@ -1,6 +1,7 @@
 import { motion, useScroll, useSpring } from 'framer-motion'
 import { useEffect, useState } from 'react'
 import { ArrowUp, MessageCircle } from 'lucide-react'
+import { spring } from '../lib/motion'
 
 const sections = [
   { id: 'about', label: 'About' },
@@ -78,6 +79,9 @@ export default function ScrollProgress() {
         {sections.map((section) => (
           <motion.button
             key={section.id}
+            type="button"
+            aria-label={`Go to ${section.label}`}
+            aria-current={activeSection === section.id ? 'true' : undefined}
             onClick={() => scrollToSection(section.id)}
             className="relative group flex items-center gap-3"
             whileHover={{ x: 5 }}
@@ -90,22 +94,16 @@ export default function ScrollProgress() {
             >
               {section.label}
             </motion.span>
-            
+
             {/* Dot */}
             <motion.div
               className={`w-2 h-2 rounded-full transition-colors ${
                 activeSection === section.id ? 'bg-signal' : 'bg-white/20'
               }`}
-              animate={{
-                scale: activeSection === section.id ? [1, 1.3, 1] : 1,
-              }}
-              transition={{
-                duration: 0.3,
-                repeat: activeSection === section.id ? Infinity : 0,
-                repeatDelay: 1,
-              }}
+              animate={{ scale: activeSection === section.id ? 1.4 : 1 }}
+              transition={spring.snappy}
             />
-            
+
             {/* Active line */}
             {activeSection === section.id && (
               <motion.div
@@ -120,14 +118,19 @@ export default function ScrollProgress() {
       </motion.div>
 
       {/* Floating action buttons */}
-      <div className="fixed bottom-8 right-8 z-50 flex flex-col gap-3">
+      <div className="safe-bottom fixed bottom-5 right-4 z-40 flex flex-col gap-3 sm:bottom-8 sm:right-8">
         {/* Contact button */}
         <motion.button
           initial={{ opacity: 0, scale: 0 }}
           animate={{ opacity: isVisible ? 1 : 0, scale: isVisible ? 1 : 0 }}
           transition={{ duration: 0.3, delay: 0.1 }}
+          style={{ pointerEvents: isVisible ? 'auto' : 'none' }}
+          aria-hidden={!isVisible}
+          tabIndex={isVisible ? 0 : -1}
+          whileHover={{ scale: 1.08 }}
+          whileTap={{ scale: 0.94 }}
           onClick={scrollToContact}
-          className="p-4 bg-gradient-to-br from-pulse to-signal rounded-full shadow-lg shadow-pulse/20 hover:shadow-pulse/40 transition-all hover:scale-110 group"
+          className="group grid h-12 w-12 place-items-center rounded-full bg-gradient-to-br from-pulse to-signal shadow-lg shadow-pulse/20 transition-shadow hover:shadow-pulse/40 sm:h-14 sm:w-14"
           aria-label="Contact"
         >
           <MessageCircle className="w-5 h-5 text-white group-hover:rotate-12 transition-transform" />
@@ -138,8 +141,13 @@ export default function ScrollProgress() {
           initial={{ opacity: 0, scale: 0 }}
           animate={{ opacity: isVisible ? 1 : 0, scale: isVisible ? 1 : 0 }}
           transition={{ duration: 0.3 }}
+          style={{ pointerEvents: isVisible ? 'auto' : 'none' }}
+          aria-hidden={!isVisible}
+          tabIndex={isVisible ? 0 : -1}
+          whileHover={{ scale: 1.08 }}
+          whileTap={{ scale: 0.94 }}
           onClick={scrollToTop}
-          className="p-4 bg-gradient-to-br from-signal to-pulse rounded-full shadow-lg shadow-signal/20 hover:shadow-signal/40 transition-all hover:scale-110 group"
+          className="group grid h-12 w-12 place-items-center rounded-full bg-gradient-to-br from-signal to-pulse shadow-lg shadow-signal/20 transition-shadow hover:shadow-signal/40 sm:h-14 sm:w-14"
           aria-label="Scroll to top"
         >
           <ArrowUp className="w-5 h-5 text-white group-hover:-translate-y-0.5 transition-transform" />

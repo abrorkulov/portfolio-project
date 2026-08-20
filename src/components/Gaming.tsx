@@ -27,7 +27,9 @@ export default function Gaming() {
                 <div className="rounded-lg bg-gradient-to-br from-pulse/20 to-signal/20 p-2 border border-pulse/30 group-hover:border-signal/50 transition-colors">
                   <Gamepad2 className="h-5 w-5 text-pulse group-hover:text-signal transition-colors" />
                 </div>
-                <h3 className="font-display text-lg font-semibold text-ink">{interest.name}</h3>
+                <h3 className="font-display text-lg font-semibold text-ink">
+                  {interest.name}
+                </h3>
               </div>
 
               <p className="text-sm leading-relaxed text-ink-muted mb-6">
@@ -35,38 +37,40 @@ export default function Gaming() {
               </p>
 
               <div className="space-y-3">
-                {Object.entries(interest.stats).map(([key, value], statIndex) => {
-                  const icons = {
-                    rank: Trophy,
-                    hours: Clock,
-                    kdr: Target,
-                    completion: Trophy,
-                    level: Trophy,
-                    cars: Target,
-                    mode: Gamepad2,
-                  }
-                  const Icon = icons[key as keyof typeof icons] || Target
-                  return (
-                    <motion.div
-                      key={key}
-                      initial={{ opacity: 0, x: -10 }}
-                      whileInView={{ opacity: 1, x: 0 }}
-                      viewport={{ once: true }}
-                      transition={{ delay: i * 0.1 + statIndex * 0.05 }}
-                      className="flex items-center justify-between p-3 rounded-lg bg-void-surface border border-white/5"
-                    >
-                      <div className="flex items-center gap-2">
-                        <Icon className="h-4 w-4 text-ink-muted" />
-                        <span className="font-mono text-xs text-ink-muted capitalize">
-                          {key}
+                {Object.entries(interest.stats).map(
+                  ([key, value], statIndex) => {
+                    const icons = {
+                      rank: Trophy,
+                      hours: Clock,
+                      kdr: Target,
+                      completion: Trophy,
+                      level: Trophy,
+                      cars: Target,
+                      mode: Gamepad2,
+                    }
+                    const Icon = icons[key as keyof typeof icons] || Target
+                    return (
+                      <motion.div
+                        key={key}
+                        initial={{ opacity: 0, x: -10 }}
+                        whileInView={{ opacity: 1, x: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ delay: i * 0.1 + statIndex * 0.05 }}
+                        className="flex items-center justify-between p-3 rounded-lg bg-void-surface border border-white/5"
+                      >
+                        <div className="flex items-center gap-2">
+                          <Icon className="h-4 w-4 text-ink-muted" />
+                          <span className="font-mono text-xs text-ink-muted capitalize">
+                            {key}
+                          </span>
+                        </div>
+                        <span className="font-mono text-sm text-signal font-semibold">
+                          {String(value)}
                         </span>
-                      </div>
-                      <span className="font-mono text-sm text-signal font-semibold">
-                        {String(value)}
-                      </span>
-                    </motion.div>
-                  )
-                })}
+                      </motion.div>
+                    )
+                  },
+                )}
               </div>
             </motion.div>
           ))}

@@ -1,175 +1,385 @@
-import { motion } from 'framer-motion'
+import { useMemo, useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import {
+  Code2,
+  Server,
+  Brain,
+  Wrench,
+  Database,
+  Layers,
+  ChevronDown,
+  type LucideIcon,
+} from 'lucide-react'
 import SectionHeader from './SectionHeader'
 import { skillCategories } from '../data/content'
-import { Code2, Server, Brain, Wrench } from 'lucide-react'
+import TechIcon from './TechIcon'
+import { getTechMeta, readableAccent } from '../lib/techMeta'
+import {
+  ease,
+  spring,
+  inView,
+  inViewEarly,
+  fadeUp,
+  staggerParent,
+} from '../lib/motion'
 
-const skillLogos: Record<string, string> = {
-  'React': 'https://cdn.simpleicons.org/react/61DAFB',
-  'TypeScript': 'https://cdn.simpleicons.org/typescript/3178C6',
-  'JavaScript': 'https://cdn.simpleicons.org/javascript/F7DF1E',
-  'Tailwind CSS': 'https://cdn.simpleicons.org/tailwindcss/06B6D4',
-  'Next.js': 'https://cdn.simpleicons.org/nextdotjs/000000',
-  'Framer Motion': 'https://cdn.simpleicons.org/framer/0055FF',
-  'C#': 'https://cdn.simpleicons.org/csharp/239120',
-  'C++': 'https://cdn.simpleicons.org/cpp/00599C',
-  '.NET': 'https://cdn.simpleicons.org/dotnet/512BD4',
-  'PHP': 'https://cdn.simpleicons.org/php/777BB4',
-  'Node.js': 'https://cdn.simpleicons.org/nodedotjs/339933',
-  'AI Engineering': 'https://cdn.simpleicons.org/openai/412991',
-  'AI Prompting': 'https://cdn.simpleicons.org/openai/412991',
-  'System Integration': 'https://cdn.simpleicons.org/integration/6366F1',
-  'Reverse Engineering': 'https://cdn.simpleicons.org/reverseng/FF6B6B',
-  'Git': 'https://cdn.simpleicons.org/git/F05032',
-  'VS Code': 'https://cdn.simpleicons.org/visualstudiocode/007ACC',
-  'Linux (Ubuntu)': 'https://cdn.simpleicons.org/ubuntu/E95420',
-  'Docker': 'https://cdn.simpleicons.org/docker/2496ED',
-  'Postman': 'https://cdn.simpleicons.org/postman/FF6C37',
-  'Architecture Analysis': 'https://cdn.simpleicons.org/architecture/8B5CF6',
+type CategoryStyle = { icon: LucideIcon; accent: string }
+
+const categoryStyles: Record<string, CategoryStyle> = {
+  Frontend: { icon: Code2, accent: '#5EEAD4' },
+  Backend: { icon: Server, accent: '#A78BFA' },
+  Databases: { icon: Database, accent: '#7DD3FC' },
+  'AI & Systems': { icon: Brain, accent: '#818CF8' },
+  'Tools & DevOps': { icon: Wrench, accent: '#FDBA74' },
 }
 
-const categoryConfig = {
-  'Frontend': { icon: Code2, gradient: 'from-cyan-500 via-blue-500 to-purple-500' },
-  'Backend': { icon: Server, gradient: 'from-purple-500 via-pink-500 to-red-500' },
-  'AI & Systems': { icon: Brain, gradient: 'from-emerald-500 via-teal-500 to-cyan-500' },
-  'Tools & DevOps': { icon: Wrench, gradient: 'from-orange-500 via-red-500 to-pink-500' },
+// Categories added to content.ts without a style entry still render.
+const defaultStyle: CategoryStyle = { icon: Layers, accent: '#5EEAD4' }
+
+const styleFor = (label: string) => categoryStyles[label] ?? defaultStyle
+
+/** Turns a raw score into the word a reader actually cares about. */
+function proficiency(level: number) {
+  if (level >= 85) return 'Advanced'
+  if (level >= 70) return 'Proficient'
+  if (level >= 55) return 'Working'
+  return 'Learning'
 }
+
+/**
+ * Cards shown per category before the reader asks for more. Four fills exactly
+ * one row on xl and keeps all five categories reachable without a long scroll —
+ * 41 cards expanded is roughly five screens of grid.
+ */
+const PREVIEW_COUNT = 4
 
 export default function Skills() {
+  const [filter, setFilter] = useState<string>('all')
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({})
+
+  const toggleCategory = (label: string) =>
+    setExpanded((prev) => ({ ...prev, [label]: !prev[label] }))
+
+  const visible = useMemo(
+    () =>
+      filter === 'all'
+        ? skillCategories
+        : skillCategories.filter((c) => c.label === filter),
+    [filter],
+  )
+
+  const totals = useMemo(() => {
+    const items = skillCategories.flatMap((c) => c.items)
+    const average =
+      items.reduce((sum, item) => sum + item.level, 0) / (items.length || 1)
+    return {
+      count: items.length,
+      categories: skillCategories.length,
+      average: Math.round(average),
+      advanced: items.filter((item) => item.level >= 85).length,
+    }
+  }, [])
+
+  const stats = [
+    { label: 'technologies', value: totals.count },
+    { label: 'disciplines', value: totals.categories },
+    { label: 'avg. proficiency', value: `${totals.average}%` },
+    { label: 'advanced level', value: totals.advanced },
+  ]
+
   return (
-    <section id="skills" className="relative border-t border-white/5 py-24 sm:py-32 overflow-hidden">
-      {/* Ambient background glow */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-signal/10 rounded-full blur-[128px] animate-pulse" />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-pulse/10 rounded-full blur-[128px] animate-pulse" style={{ animationDelay: '1s' }} />
+    <section
+      id="skills"
+      className="relative section-rule py-16 sm:py-24 lg:py-32"
+    >
+      {/* Ambient wash — static, so it costs nothing per frame. */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 overflow-hidden"
+      >
+        <div className="absolute left-1/4 top-1/4 h-72 w-72 -translate-x-1/2 rounded-full bg-signal/[0.07] blur-[120px] sm:h-96 sm:w-96" />
+        <div className="absolute bottom-1/4 right-1/4 h-72 w-72 translate-x-1/2 rounded-full bg-pulse/[0.07] blur-[120px] sm:h-96 sm:w-96" />
       </div>
-      
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 relative z-10">
+
+      <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <SectionHeader
+          index="03"
           eyebrow="skills_and_technologies"
           title="Tools I reach for"
           description="Split across the interface layer I ship with, and the systems layer I study underneath it."
         />
 
-        <div className="space-y-20">
-          {skillCategories.map((category, ci) => {
-            const config = categoryConfig[category.label as keyof typeof categoryConfig]
-            const Icon = config.icon
-            
-            return (
-              <motion.div
-                key={category.label}
-                initial={{ opacity: 0, y: 40 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: '-100px' }}
-                transition={{ duration: 0.8, delay: ci * 0.15, ease: [0.25, 0.1, 0.25, 1] }}
-              >
-                {/* Modern category header */}
-                <div className="flex items-center gap-4 mb-8">
-                  <motion.div 
-                    whileHover={{ scale: 1.1, rotate: 5 }}
-                    className={`relative`}
-                  >
-                    <div className={`absolute inset-0 bg-gradient-to-r ${config.gradient} rounded-2xl blur-lg opacity-50`} />
-                    <div className={`relative bg-gradient-to-r ${config.gradient} rounded-2xl p-3`}>
-                      <Icon className="h-6 w-6 text-white" />
-                    </div>
-                  </motion.div>
-                  <div>
-                    <h3 className="font-display text-2xl font-bold text-gradient-cool tracking-tight">
-                      {category.label}
-                    </h3>
-                    <span className="font-mono text-xs text-ink-muted/70 uppercase tracking-[0.2em]">
-                      {category.eyebrow}
-                    </span>
-                  </div>
-                </div>
+        {/* Summary strip */}
+        <motion.dl
+          variants={staggerParent(0.06)}
+          initial="hidden"
+          whileInView="show"
+          viewport={inView}
+          className="mb-8 grid grid-cols-2 gap-3 sm:mb-10 sm:gap-4 lg:grid-cols-4"
+        >
+          {stats.map((stat) => (
+            <motion.div
+              key={stat.label}
+              variants={fadeUp}
+              className="glass-card rounded-2xl px-4 py-4 sm:px-5 sm:py-5"
+            >
+              <dt className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-faint">
+                {stat.label}
+              </dt>
+              <dd className="mt-1.5 font-display text-2xl font-semibold text-gradient-cool sm:text-3xl">
+                {stat.value}
+              </dd>
+            </motion.div>
+          ))}
+        </motion.dl>
 
-                {/* Modern skill cards grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-                  {category.items.map((item, i) => {
-                    const logoUrl = skillLogos[item.name]
-                    
-                    return (
-                      <motion.div
-                        key={item.name}
-                        initial={{ opacity: 0, y: 20 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        viewport={{ once: true, margin: '-50px' }}
-                        transition={{ duration: 0.5, delay: ci * 0.15 + i * 0.05 }}
-                        whileHover={{ y: -8 }}
-                        className="group"
-                      >
-                        <div className="relative h-full">
-                          {/* Card background with gradient border */}
-                          <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-white/5 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                          
-                          <div className="relative bg-white/[0.02] backdrop-blur-xl border border-white/10 rounded-2xl p-6 hover:border-white/20 transition-all duration-300">
-                            {/* Logo container */}
-                            <div className="flex items-start justify-between mb-4">
-                              <motion.div 
-                                whileHover={{ scale: 1.1, rotate: -5 }}
-                                className="relative"
-                              >
-                                <div className="absolute inset-0 bg-gradient-to-r from-signal/20 to-pulse/20 rounded-xl blur-md opacity-0 group-hover:opacity-100 transition-opacity" />
-                                <div className="relative bg-gradient-to-br from-white/10 to-white/5 rounded-xl p-3 border border-white/10">
-                                  {logoUrl ? (
-                                    <img 
-                                      src={logoUrl} 
-                                      alt={item.name}
-                                      className="h-8 w-8"
-                                      loading="lazy"
-                                    />
-                                  ) : (
-                                    <Code2 className="h-8 w-8 text-white/80" />
-                                  )}
-                                </div>
-                              </motion.div>
-                              
-                              {/* Percentage badge */}
-                              <div className="relative">
-                                <div className="absolute inset-0 bg-gradient-to-r from-signal/20 to-pulse/20 rounded-full blur-md" />
-                                <div className="relative bg-white/5 backdrop-blur-sm rounded-full px-3 py-1 border border-white/10">
-                                  <span className="font-mono text-xs font-semibold text-signal">
-                                    {item.level}%
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-                            
-                            {/* Skill name */}
-                            <motion.h4 
-                              whileHover={{ scale: 1.05 }}
-                              className="font-display text-base font-semibold text-ink mb-2 group-hover:text-signal transition-colors"
-                            >
-                              {item.name}
-                            </motion.h4>
-                            
-                            {/* Progress bar */}
-                            <div className="relative h-1.5 bg-white/5 rounded-full overflow-hidden">
-                              <motion.div
-                                initial={{ width: 0 }}
-                                whileInView={{ width: `${item.level}%` }}
-                                viewport={{ once: true }}
-                                transition={{ duration: 1, delay: ci * 0.15 + i * 0.05 + 0.2, ease: 'easeOut' }}
-                                className="h-full bg-gradient-to-r from-signal via-signal-bright to-pulse relative"
-                              >
-                                <motion.div
-                                  className="absolute inset-0 bg-white/30"
-                                  animate={{ x: ['-100%', '100%'] }}
-                                  transition={{ duration: 2, repeat: Infinity, ease: 'linear', delay: i * 0.1 }}
-                                />
-                              </motion.div>
-                            </div>
-                          </div>
-                        </div>
-                      </motion.div>
-                    )
-                  })}
-                </div>
-              </motion.div>
+        {/* Discipline filter. Scrolls horizontally on phones rather than
+            wrapping into a tall stack that pushes the grid off-screen. */}
+        <div
+          role="tablist"
+          aria-label="Filter skills by discipline"
+          className="scrollbar-none -mx-4 mb-10 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0 lg:mb-12"
+        >
+          {['all', ...skillCategories.map((c) => c.label)].map((option) => {
+            const isActive = filter === option
+            const accent =
+              option === 'all' ? '#5EEAD4' : styleFor(option).accent
+            return (
+              <button
+                key={option}
+                type="button"
+                role="tab"
+                aria-selected={isActive}
+                onClick={() => setFilter(option)}
+                className={
+                  // min-h-[44px] keeps every pill a comfortable tap target.
+                  'relative min-h-[44px] shrink-0 whitespace-nowrap rounded-full px-4 py-2.5 font-mono text-xs tracking-wide transition-colors duration-200 ' +
+                  (isActive
+                    ? 'font-semibold text-void'
+                    : 'text-ink-muted hover:text-ink')
+                }
+              >
+                {/* Shared-element pill: the background slides between tabs
+                    instead of each one flicking its own colour on and off. */}
+                {isActive ? (
+                  <motion.span
+                    layoutId="skillFilterPill"
+                    className="absolute inset-0 rounded-full"
+                    style={{ backgroundColor: accent }}
+                    transition={spring.layout}
+                  />
+                ) : (
+                  <span className="absolute inset-0 rounded-full border border-white/10 transition-colors duration-200 hover:border-white/25" />
+                )}
+                <span className="relative z-10">
+                  {option === 'all' ? 'all skills' : option.toLowerCase()}
+                </span>
+              </button>
             )
           })}
         </div>
+
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.div
+            // Keying on the filter lets the whole group cross-fade as one unit,
+            // which reads far calmer than 40 cards animating independently.
+            key={filter}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.35, ease: ease.out }}
+            className="space-y-12 sm:space-y-16"
+          >
+            {visible.map((category) => {
+              const { icon: Icon, accent } = styleFor(category.label)
+              // Filtering to a single discipline is itself a request to see
+              // that group, so it opens fully without a second click.
+              const isOpen =
+                expanded[category.label] || filter === category.label
+              const shown = isOpen
+                ? category.items
+                : category.items.slice(0, PREVIEW_COUNT)
+              const hiddenCount = category.items.length - shown.length
+
+              return (
+                <motion.div
+                  key={category.label}
+                  initial="hidden"
+                  whileInView="show"
+                  viewport={inViewEarly}
+                  variants={staggerParent(0.04, 0.05)}
+                >
+                  {/* Category header */}
+                  <motion.div
+                    variants={fadeUp}
+                    className="mb-6 flex items-start gap-3 sm:mb-7 sm:gap-4"
+                  >
+                    <div
+                      className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border sm:h-12 sm:w-12"
+                      style={{
+                        backgroundColor: `${accent}1A`,
+                        borderColor: `${accent}40`,
+                        boxShadow: `0 0 28px -10px ${accent}`,
+                      }}
+                    >
+                      <Icon
+                        className="h-5 w-5"
+                        style={{ color: accent }}
+                        aria-hidden="true"
+                      />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                        <h3 className="font-display text-lg font-semibold tracking-tight text-ink sm:text-2xl">
+                          {category.label}
+                        </h3>
+                        <span
+                          className="rounded-full px-2 py-0.5 font-mono text-[10px]"
+                          style={{
+                            color: accent,
+                            backgroundColor: `${accent}14`,
+                          }}
+                        >
+                          {category.items.length}
+                        </span>
+                        <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-faint sm:text-[11px]">
+                          {category.eyebrow}
+                        </span>
+                      </div>
+                      <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-ink-muted">
+                        {category.summary}
+                      </p>
+                    </div>
+                  </motion.div>
+
+                  {/* Skill cards */}
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
+                    {shown.map((item, i) => {
+                      // Preview cards ride the parent's scroll stagger. Cards
+                      // revealed by "Show more" mount while the parent is
+                      // already in its `show` state, so they would otherwise
+                      // snap in — an explicit initial/animate pair opts them
+                      // out of variant inheritance and gives them their own
+                      // entrance.
+                      const isRevealed = i >= PREVIEW_COUNT
+                      const entrance = isRevealed
+                        ? {
+                            initial: { opacity: 0, y: 10 },
+                            animate: { opacity: 1, y: 0 },
+                            transition: {
+                              duration: 0.35,
+                              delay: (i - PREVIEW_COUNT) * 0.04,
+                              ease: ease.out,
+                            },
+                          }
+                        : { variants: fadeUp }
+
+                      // Logos keep the true brand colour; text and bars use a
+                      // lightened variant so dark marks stay legible on near-black.
+                      const brand = readableAccent(getTechMeta(item.name).color)
+
+                      return (
+                        <motion.article
+                          key={item.name}
+                          {...entrance}
+                          whileHover={{ y: -6 }}
+                          className="skill-card group relative flex h-full flex-col rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4 transition-colors duration-300 hover:border-white/20 sm:p-5"
+                          style={{ '--brand': brand } as React.CSSProperties}
+                        >
+                          <div className="mb-4 flex items-start justify-between gap-3">
+                            <div
+                              className="flex h-12 w-12 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] transition-transform duration-300 group-hover:scale-105 sm:h-14 sm:w-14"
+                              style={{
+                                boxShadow: `inset 0 0 24px -14px ${brand}`,
+                              }}
+                            >
+                              <TechIcon
+                                name={item.name}
+                                className="h-6 w-6 sm:h-7 sm:w-7"
+                              />
+                            </div>
+
+                            <span
+                              className="rounded-full border px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider"
+                              style={{
+                                color: brand,
+                                borderColor: `${brand}33`,
+                                backgroundColor: `${brand}14`,
+                              }}
+                            >
+                              {proficiency(item.level)}
+                            </span>
+                          </div>
+
+                          <h4 className="font-display text-base font-semibold text-ink">
+                            {item.name}
+                          </h4>
+                          <p className="mt-1 flex-1 text-xs leading-relaxed text-ink-muted">
+                            {item.note}
+                          </p>
+
+                          <div className="mt-4">
+                            <div className="mb-1.5 flex items-center justify-between font-mono text-[10px] text-ink-faint">
+                              <span>proficiency</span>
+                              <span style={{ color: brand }}>
+                                {item.level}%
+                              </span>
+                            </div>
+                            <div
+                              role="progressbar"
+                              aria-label={`${item.name} proficiency`}
+                              aria-valuenow={item.level}
+                              aria-valuemin={0}
+                              aria-valuemax={100}
+                              className="h-1.5 overflow-hidden rounded-full bg-white/[0.07]"
+                            >
+                              <motion.div
+                                initial={{ width: 0 }}
+                                animate={{ width: `${item.level}%` }}
+                                transition={{
+                                  duration: 0.9,
+                                  delay: 0.15,
+                                  ease: ease.out,
+                                }}
+                                className="h-full rounded-full"
+                                style={{
+                                  background: `linear-gradient(90deg, ${brand}66, ${brand})`,
+                                }}
+                              />
+                            </div>
+                          </div>
+                        </motion.article>
+                      )
+                    })}
+                  </div>
+
+                  {category.items.length > PREVIEW_COUNT && (
+                    <motion.div
+                      variants={fadeUp}
+                      className="mt-4 flex justify-center"
+                    >
+                      <button
+                        type="button"
+                        onClick={() => toggleCategory(category.label)}
+                        aria-expanded={isOpen}
+                        className="group flex min-h-[44px] items-center gap-2 rounded-full border border-white/10 bg-white/[0.02] px-5 font-mono text-xs text-ink-muted transition-colors hover:border-white/25 hover:text-ink"
+                      >
+                        {isOpen ? 'Show less' : `Show ${hiddenCount} more`}
+                        <motion.span
+                          animate={{ rotate: isOpen ? 180 : 0 }}
+                          transition={spring.snappy}
+                          className="grid place-items-center"
+                        >
+                          <ChevronDown className="h-4 w-4" aria-hidden="true" />
+                        </motion.span>
+                      </button>
+                    </motion.div>
+                  )}
+                </motion.div>
+              )
+            })}
+          </motion.div>
+        </AnimatePresence>
       </div>
     </section>
   )

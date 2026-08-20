@@ -44,52 +44,87 @@ export const profile = {
 export type SkillCategory = {
   label: string
   eyebrow: string
-  items: { name: string; level: number }[]
+  /** One-line framing of what this layer covers, shown under the heading. */
+  summary: string
+  items: { name: string; level: number; note: string }[]
 }
 
+// Ordered high-to-low inside each group so the strongest work leads.
 export const skillCategories: SkillCategory[] = [
   {
     label: 'Frontend',
     eyebrow: 'interface_layer',
+    summary: 'The layer I ship in daily — component architecture, type safety and motion.',
     items: [
-      { name: 'React', level: 88 },
-      { name: 'TypeScript', level: 82 },
-      { name: 'JavaScript', level: 90 },
-      { name: 'Tailwind CSS', level: 85 },
-      { name: 'Next.js', level: 75 },
-      { name: 'Framer Motion', level: 70 },
+      { name: 'HTML5', level: 92, note: 'Semantic markup and accessibility basics' },
+      { name: 'JavaScript', level: 90, note: 'ES2023, async patterns, DOM internals' },
+      { name: 'React', level: 88, note: 'Hooks, composition, render performance' },
+      { name: 'CSS3', level: 86, note: 'Flexbox, grid, custom properties, animation' },
+      { name: 'Tailwind CSS', level: 85, note: 'Design tokens and responsive systems' },
+      { name: 'TypeScript', level: 82, note: 'Generics, discriminated unions, strict mode' },
+      { name: 'Next.js', level: 75, note: 'App router, routing and rendering modes' },
+      { name: 'Framer Motion', level: 72, note: 'Layout animation and scroll choreography' },
+      { name: 'Sass', level: 68, note: 'Nesting, mixins and legacy stylesheet upkeep' },
     ],
   },
   {
     label: 'Backend',
     eyebrow: 'server_layer',
+    summary: 'Where the data lives — typed services, memory-aware code and APIs.',
     items: [
-      { name: 'C#', level: 75 },
-      { name: 'C++', level: 70 },
-      { name: '.NET', level: 72 },
-      { name: 'PHP', level: 65 },
-      { name: 'Node.js', level: 68 },
+      { name: 'C#', level: 75, note: 'OOP, LINQ, async/await' },
+      { name: 'REST APIs', level: 74, note: 'Resource design, status codes, auth headers' },
+      { name: '.NET', level: 72, note: 'Web APIs and dependency injection' },
+      { name: 'C++', level: 70, note: 'Pointers, memory layout, STL' },
+      { name: 'Node.js', level: 68, note: 'Express services and tooling scripts' },
+      { name: 'Python', level: 66, note: 'Scripting, automation and AI tooling' },
+      { name: 'PHP', level: 65, note: 'Server-rendered apps and REST endpoints' },
+      { name: 'Express', level: 62, note: 'Routing, middleware and error handling' },
+    ],
+  },
+  {
+    label: 'Databases',
+    eyebrow: 'data_layer',
+    summary: 'Storing and querying the things an app has to remember.',
+    items: [
+      { name: 'SQL', level: 70, note: 'Joins, indexes and query shaping' },
+      { name: 'MySQL', level: 68, note: 'Schema design for PHP and .NET apps' },
+      { name: 'PostgreSQL', level: 62, note: 'Relational modelling and constraints' },
+      { name: 'SQLite', level: 60, note: 'Embedded storage for local tools' },
+      { name: 'MongoDB', level: 52, note: 'Document modelling for Node services' },
     ],
   },
   {
     label: 'AI & Systems',
     eyebrow: 'intelligence_layer',
+    summary: 'The layer I study underneath — models, integration and how software really runs.',
     items: [
-      { name: 'AI Engineering', level: 78 },
-      { name: 'AI Prompting', level: 85 },
-      { name: 'System Integration', level: 72 },
-      { name: 'Reverse Engineering', level: 60 },
+      { name: 'AI Prompting', level: 85, note: 'Structured prompting and evaluation loops' },
+      { name: 'AI Engineering', level: 78, note: 'LLM integration and tool orchestration' },
+      { name: 'System Integration', level: 72, note: 'Wiring services and data across boundaries' },
+      { name: 'Data Structures', level: 70, note: 'Complexity trade-offs in real code' },
+      { name: 'Networking', level: 64, note: 'TCP/IP, HTTP and packet-level debugging' },
+      { name: 'Reverse Engineering', level: 60, note: 'Static analysis and process architecture' },
+      { name: 'Windows Internals', level: 58, note: 'Processes, memory and the Win32 surface' },
+      { name: 'Machine Learning', level: 50, note: 'Model fundamentals and training intuition' },
     ],
   },
   {
     label: 'Tools & DevOps',
     eyebrow: 'workflow_layer',
+    summary: 'The workflow around the code — version control, containers and Linux.',
     items: [
-      { name: 'Git', level: 80 },
-      { name: 'VS Code', level: 90 },
-      { name: 'Linux (Ubuntu)', level: 78 },
-      { name: 'Docker', level: 55 },
-      { name: 'Postman', level: 70 },
+      { name: 'VS Code', level: 90, note: 'Debugging, extensions, task automation' },
+      { name: 'Git', level: 80, note: 'Branching strategy, rebasing, code review' },
+      { name: 'GitHub', level: 80, note: 'Pull requests, issues and Actions' },
+      { name: 'Linux (Ubuntu)', level: 78, note: 'Shell, permissions, daily driver' },
+      { name: 'Vite', level: 76, note: 'Dev server, build config and code splitting' },
+      { name: 'npm', level: 74, note: 'Dependency and script management' },
+      { name: 'Postman', level: 70, note: 'API testing and collection workflows' },
+      { name: 'Bash', level: 66, note: 'Shell scripting and pipeline glue' },
+      { name: 'Vercel', level: 64, note: 'Deploys, previews and edge config' },
+      { name: 'Figma', level: 60, note: 'Reading specs and exporting assets' },
+      { name: 'Docker', level: 55, note: 'Containerising apps for local dev' },
     ],
   },
 ]

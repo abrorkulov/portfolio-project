@@ -67,7 +67,11 @@ export default function Cert3DBackground() {
       >
         <ambientLight intensity={0.5} />
         <pointLight position={[10, 10, 10]} intensity={1} color="#5EEAD4" />
-        <pointLight position={[-10, -10, -10]} intensity={0.8} color="#A78BFA" />
+        <pointLight
+          position={[-10, -10, -10]}
+          intensity={0.8}
+          color="#A78BFA"
+        />
         <FloatingCoreMesh />
       </Canvas>
     </div>

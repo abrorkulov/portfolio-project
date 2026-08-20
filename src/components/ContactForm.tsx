@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion'
 import { useState } from 'react'
 import { Send, CheckCircle, User, Mail, MessageSquare } from 'lucide-react'
+import { profile } from '../data/content'
 
 export default function ContactForm() {
   const [formData, setFormData] = useState({
@@ -12,22 +13,34 @@ export default function ContactForm() {
   const [isSubmitted, setIsSubmitted] = useState(false)
   const [focusedField, setFocusedField] = useState<string | null>(null)
 
+  /**
+   * There is no backend behind this site, so the form hands the message to the
+   * visitor's own mail client. It previously ran a setTimeout and then claimed
+   * "Message sent successfully!" while sending nothing at all.
+   */
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
-    
-    // Simulate form submission
-    setTimeout(() => {
-      setIsSubmitting(false)
-      setIsSubmitted(true)
-      setFormData({ name: '', email: '', message: '' })
-      
-      setTimeout(() => setIsSubmitted(false), 3000)
-    }, 1500)
+
+    const subject = `Portfolio enquiry from ${formData.name}`
+    const body = `${formData.message}
+
+—
+${formData.name}
+${formData.email}`
+    const mailto = `mailto:${profile.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
+
+    window.location.href = mailto
+
+    setIsSubmitting(false)
+    setIsSubmitted(true)
+    setFormData({ name: '', email: '', message: '' })
   }
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    setFormData(prev => ({
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+  ) => {
+    setFormData((prev) => ({
       ...prev,
       [e.target.name]: e.target.value,
     }))
@@ -52,7 +65,7 @@ export default function ContactForm() {
       whileInView={{ opacity: 1, x: 0 }}
       viewport={{ once: true }}
       transition={{ delay: 0.4 }}
-      className="glass-card glow-border rounded-2xl p-8 relative z-10 overflow-hidden"
+      className="glass-card glow-border relative z-10 overflow-hidden rounded-2xl p-5 sm:p-8"
     >
       {/* Animated background gradient */}
       <motion.div
@@ -66,7 +79,7 @@ export default function ContactForm() {
           ease: 'easeInOut',
         }}
       />
-      
+
       <div className="relative z-10">
         <motion.div
           initial={{ opacity: 0, y: -10 }}
@@ -80,7 +93,7 @@ export default function ContactForm() {
             I'll get back to you within 24 hours
           </p>
         </motion.div>
-        
+
         {isSubmitted ? (
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
@@ -106,7 +119,7 @@ export default function ContactForm() {
               transition={{ delay: 0.4 }}
               className="font-mono text-sm text-ink-muted"
             >
-              Message sent successfully!
+              Your email app should be open now.
             </motion.p>
             <motion.p
               initial={{ opacity: 0 }}
@@ -114,7 +127,7 @@ export default function ContactForm() {
               transition={{ delay: 0.6 }}
               className="font-mono text-xs text-ink-faint mt-2"
             >
-              I'll be in touch soon 🚀
+              If it didn&apos;t open, write to {profile.email}
             </motion.p>
           </motion.div>
         ) : (
@@ -134,11 +147,13 @@ export default function ContactForm() {
                 onFocus={() => setFocusedField('name')}
                 onBlur={() => setFocusedField(null)}
                 placeholder="Your name"
+                aria-label="Your name"
+                autoComplete="name"
                 required
                 className="w-full bg-white/5 border border-white/10 rounded-xl pl-12 pr-4 py-3 font-mono text-sm text-ink placeholder-ink-muted/50 focus:outline-none transition-all"
               />
             </motion.div>
-            
+
             <motion.div
               variants={inputVariants}
               animate={focusedField === 'email' ? 'focused' : 'default'}
@@ -154,11 +169,13 @@ export default function ContactForm() {
                 onFocus={() => setFocusedField('email')}
                 onBlur={() => setFocusedField(null)}
                 placeholder="Your email"
+                aria-label="Your email"
+                autoComplete="email"
                 required
                 className="w-full bg-white/5 border border-white/10 rounded-xl pl-12 pr-4 py-3 font-mono text-sm text-ink placeholder-ink-muted/50 focus:outline-none transition-all"
               />
             </motion.div>
-            
+
             <motion.div
               variants={inputVariants}
               animate={focusedField === 'message' ? 'focused' : 'default'}
@@ -173,17 +190,22 @@ export default function ContactForm() {
                 onFocus={() => setFocusedField('message')}
                 onBlur={() => setFocusedField(null)}
                 placeholder="Your message"
+                aria-label="Your message"
                 required
                 rows={4}
                 className="w-full bg-white/5 border border-white/10 rounded-xl pl-12 pr-4 py-3 font-mono text-sm text-ink placeholder-ink-muted/50 focus:outline-none transition-all resize-none"
               />
             </motion.div>
-            
+
             <motion.button
-              whileHover={{ scale: 1.02, boxShadow: '0 10px 30px rgba(94, 234, 212, 0.3)' }}
+              type="submit"
+              whileHover={{
+                scale: 1.02,
+                boxShadow: '0 10px 30px rgba(94, 234, 212, 0.3)',
+              }}
               whileTap={{ scale: 0.98 }}
               disabled={isSubmitting}
-              className="w-full bg-gradient-to-r from-signal via-signal-bright to-pulse text-white font-mono text-sm font-semibold py-4 rounded-xl flex items-center justify-center gap-2 hover:shadow-lg hover:shadow-signal/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden group"
+              className="w-full bg-gradient-to-r from-signal via-signal-bright to-pulse text-void font-mono text-sm font-semibold py-4 min-h-[52px] rounded-xl flex items-center justify-center gap-2 hover:shadow-lg hover:shadow-signal/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden group"
             >
               <motion.div
                 className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
@@ -199,9 +221,13 @@ export default function ContactForm() {
               {isSubmitting ? (
                 <>
                   <motion.div
-                    className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full"
+                    className="w-5 h-5 border-2 border-void/30 border-t-void rounded-full"
                     animate={{ rotate: 360 }}
-                    transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                    transition={{
+                      duration: 1,
+                      repeat: Infinity,
+                      ease: 'linear',
+                    }}
                   />
                   <span>Sending...</span>
                 </>

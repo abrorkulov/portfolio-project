@@ -4,12 +4,16 @@ import App from './App'
 import './index.css'
 import { initAnalytics } from './lib/analytics'
 
-// Register Service Worker for PWA support
+// Register Service Worker for PWA support.
+// `updateViaCache: 'none'` stops the browser from serving sw.js itself out of
+// the HTTP cache, so a new strategy actually reaches returning visitors.
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch((err) => {
-      console.warn('[PWA] Service Worker registration failed:', err)
-    })
+    navigator.serviceWorker
+      .register('/sw.js', { updateViaCache: 'none' })
+      .catch((err) => {
+        console.warn('[PWA] Service Worker registration failed:', err)
+      })
   })
 }
 

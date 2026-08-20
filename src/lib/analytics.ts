@@ -12,7 +12,9 @@ export function initAnalytics() {
   if (typeof window === 'undefined') return
   
   // Track page view
-  console.log('[Analytics] Session initialized for Jahongir Abrorkulov Portfolio')
+  if (import.meta.env.DEV) {
+    console.log('[Analytics] Session initialized')
+  }
   
   // Observe section visibility for section view metrics
   if ('IntersectionObserver' in window) {

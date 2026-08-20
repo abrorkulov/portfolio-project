@@ -5,7 +5,13 @@ import { Gamepad2, RotateCcw, Zap } from 'lucide-react'
 interface DinoState {
   dinoY: number
   dinoVelocity: number
-  obstacles: Array<{ x: number; type: 'cactus' | 'bird'; y: number; width: number; height: number }>
+  obstacles: Array<{
+    x: number
+    type: 'cactus' | 'bird'
+    y: number
+    width: number
+    height: number
+  }>
   isJumping: boolean
   isDucking: boolean
   gameOver: boolean
@@ -14,6 +20,16 @@ interface DinoState {
   gameSpeed: number
   frameCount: number
 }
+
+// Physics constants live at module scope: declared inside the component they
+// were re-created every render, which is what made the hook dependency
+// checker flag `jump`.
+const GRAVITY = 0.6
+const JUMP_FORCE = -12
+const GROUND_Y = 150
+const DINO_WIDTH = 40
+const DINO_HEIGHT = 44
+const DINO_DUCK_HEIGHT = 24
 
 export default function DinoGame() {
   const [gameState, setGameState] = useState<DinoState>({
@@ -32,16 +48,9 @@ export default function DinoGame() {
   const gameLoopRef = useRef<number>()
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
-  const GRAVITY = 0.6
-  const JUMP_FORCE = -12
-  const GROUND_Y = 150
-  const DINO_WIDTH = 40
-  const DINO_HEIGHT = 44
-  const DINO_DUCK_HEIGHT = 24
-
   const jump = useCallback(() => {
     if (!gameState.isJumping && !gameState.gameOver && isPlaying) {
-      setGameState(prev => ({
+      setGameState((prev) => ({
         ...prev,
         dinoVelocity: JUMP_FORCE,
         isJumping: true,
@@ -50,14 +59,17 @@ export default function DinoGame() {
     }
   }, [gameState.isJumping, gameState.gameOver, isPlaying])
 
-  const duck = useCallback((isDucking: boolean) => {
-    if (!gameState.gameOver && isPlaying && !gameState.isJumping) {
-      setGameState(prev => ({ ...prev, isDucking }))
-    }
-  }, [gameState.gameOver, gameState.isJumping, isPlaying])
+  const duck = useCallback(
+    (isDucking: boolean) => {
+      if (!gameState.gameOver && isPlaying && !gameState.isJumping) {
+        setGameState((prev) => ({ ...prev, isDucking }))
+      }
+    },
+    [gameState.gameOver, gameState.isJumping, isPlaying],
+  )
 
   const resetGame = useCallback(() => {
-    setGameState(prev => ({
+    setGameState((prev) => ({
       dinoY: 0,
       dinoVelocity: 0,
       obstacles: [],
@@ -110,7 +122,7 @@ export default function DinoGame() {
     if (!isPlaying || gameState.gameOver) return
 
     const gameLoop = () => {
-      setGameState(prev => {
+      setGameState((prev) => {
         // Apply gravity
         let newDinoY = prev.dinoY + prev.dinoVelocity
         let newDinoVelocity = prev.dinoVelocity + GRAVITY
@@ -124,13 +136,13 @@ export default function DinoGame() {
         // Spawn obstacles
         let newObstacles = [...prev.obstacles]
         const newFrameCount = prev.frameCount + 1
-        
+
         // Spawn cactus or bird
         if (newFrameCount % Math.floor(80 + Math.random() * 50) === 0) {
           const isBird = prev.score > 500 && Math.random() > 0.7
           const obstacle = {
             x: 600,
-            type: isBird ? 'bird' as const : 'cactus' as const,
+            type: isBird ? ('bird' as const) : ('cactus' as const),
             y: isBird ? GROUND_Y - 60 - Math.random() * 30 : GROUND_Y,
             width: isBird ? 36 : 16 + Math.random() * 12,
             height: isBird ? 24 : 32 + Math.random() * 16,
@@ -140,8 +152,8 @@ export default function DinoGame() {
 
         // Move obstacles
         newObstacles = newObstacles
-          .map(obs => ({ ...obs, x: obs.x - prev.gameSpeed }))
-          .filter(obs => obs.x > -40)
+          .map((obs) => ({ ...obs, x: obs.x - prev.gameSpeed }))
+          .filter((obs) => obs.x > -40)
 
         // Collision detection
         const dinoHeight = prev.isDucking ? DINO_DUCK_HEIGHT : DINO_HEIGHT
@@ -174,7 +186,9 @@ export default function DinoGame() {
 
         // Update score and speed
         const newScore = collision ? prev.score : prev.score + 1
-        const newGameSpeed = collision ? prev.gameSpeed : Math.min(prev.gameSpeed + 0.001, 12)
+        const newGameSpeed = collision
+          ? prev.gameSpeed
+          : Math.min(prev.gameSpeed + 0.001, 12)
 
         // Update high score
         if (newScore > prev.highScore) {
@@ -228,11 +242,16 @@ export default function DinoGame() {
     ctx.fillRect(0, GROUND_Y - 2, canvas.width, 2)
 
     // Draw obstacles with pixelated style
-    gameState.obstacles.forEach(obs => {
+    gameState.obstacles.forEach((obs) => {
       if (obs.type === 'cactus') {
         // Cactus body - pixelated style
         ctx.fillStyle = '#535353'
-        ctx.fillRect(obs.x + obs.width / 3, obs.y - obs.height, obs.width / 3, obs.height)
+        ctx.fillRect(
+          obs.x + obs.width / 3,
+          obs.y - obs.height,
+          obs.width / 3,
+          obs.height,
+        )
         ctx.fillRect(obs.x, obs.y - obs.height + 8, obs.width, obs.height - 16)
         // Cactus arms
         ctx.fillRect(obs.x - 8, obs.y - obs.height + 12, 8, 4)
@@ -246,7 +265,12 @@ export default function DinoGame() {
         ctx.fillRect(obs.x, obs.y - obs.height, obs.width, obs.height)
         // Wings
         ctx.fillRect(obs.x - 6 + wingOffset, obs.y - obs.height + 8, 8, 4)
-        ctx.fillRect(obs.x + obs.width - 2 - wingOffset, obs.y - obs.height + 8, 8, 4)
+        ctx.fillRect(
+          obs.x + obs.width - 2 - wingOffset,
+          obs.y - obs.height + 8,
+          8,
+          4,
+        )
         // Beak
         ctx.fillRect(obs.x + obs.width, obs.y - obs.height + 8, 6, 4)
       }
@@ -255,9 +279,9 @@ export default function DinoGame() {
     // Draw dino with pixelated original-style
     const dinoHeight = gameState.isDucking ? DINO_DUCK_HEIGHT : DINO_HEIGHT
     const dinoY = GROUND_Y - dinoHeight + gameState.dinoY
-    
+
     ctx.fillStyle = '#535353'
-    
+
     if (gameState.isDucking) {
       // Ducking dino - wider, shorter
       ctx.fillRect(50, dinoY, DINO_WIDTH + 8, dinoHeight)
@@ -274,7 +298,7 @@ export default function DinoGame() {
       ctx.fillStyle = '#535353'
       ctx.fillRect(50 + DINO_WIDTH - 2, dinoY + 6, 2, 2)
     }
-    
+
     // Legs with animation
     const legOffset = Math.sin(gameState.frameCount * 0.3) * 3
     ctx.fillStyle = '#535353'
@@ -289,11 +313,23 @@ export default function DinoGame() {
     // Draw score - original style
     ctx.fillStyle = '#535353'
     ctx.font = '16px monospace'
-    ctx.fillText(`${Math.floor(gameState.score / 10).toString().padStart(5, '0')}`, canvas.width - 80, 25)
-    
+    ctx.fillText(
+      `${Math.floor(gameState.score / 10)
+        .toString()
+        .padStart(5, '0')}`,
+      canvas.width - 80,
+      25,
+    )
+
     // High score
     ctx.font = '12px monospace'
-    ctx.fillText(`HI ${Math.floor(gameState.highScore / 10).toString().padStart(5, '0')}`, canvas.width - 80, 45)
+    ctx.fillText(
+      `HI ${Math.floor(gameState.highScore / 10)
+        .toString()
+        .padStart(5, '0')}`,
+      canvas.width - 80,
+      45,
+    )
   }, [gameState])
 
   return (
@@ -305,7 +341,9 @@ export default function DinoGame() {
           </div>
           <div>
             <h3 className="font-display font-semibold text-ink">Dino Runner</h3>
-            <p className="font-mono text-xs text-ink-muted">Space/↑ Jump | ↓ Duck</p>
+            <p className="font-mono text-xs text-ink-muted">
+              Space/↑ Jump | ↓ Duck
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -357,7 +395,9 @@ export default function DinoGame() {
             className="absolute inset-0 flex items-center justify-center bg-void/80 backdrop-blur-sm rounded-lg"
           >
             <div className="text-center">
-              <p className="font-display text-3xl font-semibold text-ink mb-2">Game Over</p>
+              <p className="font-display text-3xl font-semibold text-ink mb-2">
+                Game Over
+              </p>
               <p className="font-mono text-lg text-signal mb-1">
                 Score: {Math.floor(gameState.score / 10)}
               </p>

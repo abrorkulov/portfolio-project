@@ -23,7 +23,7 @@ export default function LoadingScreen() {
 
     // Simulate loading progress
     const progressInterval = setInterval(() => {
-      setProgress(prev => {
+      setProgress((prev) => {
         if (prev >= 100) return 100
         return prev + Math.random() * 20
       })
@@ -40,17 +40,17 @@ export default function LoadingScreen() {
       {loading && (
         <motion.div
           initial={{ opacity: 1 }}
-          exit={{ 
+          exit={{
             opacity: 0,
             scale: 1.1,
-            filter: 'blur(10px)'
+            filter: 'blur(10px)',
           }}
           transition={{ duration: 0.8, ease: 'easeInOut' }}
           className="fixed inset-0 z-50 flex items-center justify-center bg-void overflow-hidden"
         >
           {/* Animated background grid */}
           <div className="absolute inset-0 grid-overlay opacity-20" />
-          
+
           {/* Floating particles */}
           {[...Array(20)].map((_, i) => (
             <motion.div
@@ -116,7 +116,7 @@ export default function LoadingScreen() {
                   delay: 0.4,
                 }}
               />
-              
+
               {/* Central loader */}
               <motion.div
                 className="absolute inset-0 flex items-center justify-center"
@@ -129,17 +129,19 @@ export default function LoadingScreen() {
               {/* Center icon */}
               <motion.div
                 className="absolute inset-0 flex items-center justify-center"
-                animate={{ 
+                animate={{
                   scale: [1, 1.1, 1],
-                  rotate: [-5, 5, -5]
+                  rotate: [-5, 5, -5],
                 }}
-                transition={{ 
+                transition={{
                   duration: 2,
                   repeat: Infinity,
-                  ease: 'easeInOut'
+                  ease: 'easeInOut',
                 }}
               >
-                <span className="text-3xl font-display font-bold text-gradient">J</span>
+                <span className="text-3xl font-display font-bold text-gradient">
+                  J
+                </span>
               </motion.div>
             </div>
 

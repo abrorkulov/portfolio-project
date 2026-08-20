@@ -6,9 +6,11 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
+        // three.js and recharts are deliberately NOT pinned to manual chunks:
+        // naming them here pulls them into the entry's preload graph, which
+        // re-downloads ~270 kB gzipped on every first paint. Left alone,
+        // Rollup keeps them inside the lazy chunks that actually import them.
         manualChunks: {
-          'three-vendor': ['three', '@react-three/fiber', '@react-three/drei'],
-          'recharts-vendor': ['recharts'],
           'motion-vendor': ['framer-motion'],
         },
       },

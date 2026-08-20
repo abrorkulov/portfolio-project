@@ -43,7 +43,8 @@ export default class ErrorBoundary extends Component<Props, State> {
                 {this.props.fallbackTitle || 'Component Execution Halted'}
               </h3>
               <p className="mt-1 max-w-md font-mono text-xs text-ink-muted">
-                {this.state.error?.message || 'An unexpected rendering error occurred in this section.'}
+                {this.state.error?.message ||
+                  'An unexpected rendering error occurred in this section.'}
               </p>
             </div>
             <button
