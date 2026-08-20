@@ -3,6 +3,12 @@ import ReactDOM from 'react-dom/client'
 import App from './App'
 import './index.css'
 import { initAnalytics } from './lib/analytics'
+import { syncMotionTier } from './lib/useMotionProfile'
+
+// Stamp the motion tier on <html> before the first render. The stylesheet gates
+// backdrop blur and the animated background on it, so doing this after mount
+// would flash the expensive style onto a phone for a frame or two.
+syncMotionTier()
 
 // Register Service Worker for PWA support.
 // `updateViaCache: 'none'` stops the browser from serving sw.js itself out of

@@ -1,5 +1,12 @@
 import { motion } from 'framer-motion'
-import { fadeUp, staggerParent, inView } from '../lib/motion'
+import {
+  blurUp,
+  ease,
+  fadeUp,
+  lineReveal,
+  staggerParent,
+  inView,
+} from '../lib/motion'
 
 type SectionHeaderProps = {
   eyebrow: string
@@ -36,25 +43,38 @@ export default function SectionHeader({
           <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-signal sm:text-xs">
             // {eyebrow}
           </span>
-          {/* Hairline that runs out from the eyebrow toward the margin. */}
-          <span
+          {/* Hairline that draws itself out from the eyebrow toward the
+              margin. Scaling from the left edge keeps it on the compositor —
+              animating `width` would relayout the row on every frame. */}
+          <motion.span
             aria-hidden="true"
-            className="h-px flex-1 bg-gradient-to-r from-signal/30 to-transparent"
+            variants={{
+              hidden: { scaleX: 0 },
+              show: {
+                scaleX: 1,
+                transition: { duration: 1, ease: ease.out },
+              },
+            }}
+            className="h-px flex-1 origin-left bg-gradient-to-r from-signal/40 to-transparent"
           />
         </motion.div>
 
-        <motion.h2
-          variants={fadeUp}
-          // Fluid type: scales continuously between phone and desktop instead
-          // of jumping at one breakpoint.
-          className="mt-3 font-display font-semibold leading-[1.15] text-[clamp(1.75rem,5vw,2.5rem)]"
-        >
-          {title}
-        </motion.h2>
+        {/* The title wipes up from behind its own baseline, matching the hero
+            headline so every section opens the same way. */}
+        <span className="reveal-line mt-3 block">
+          <motion.h2
+            variants={lineReveal}
+            // Fluid type: scales continuously between phone and desktop instead
+            // of jumping at one breakpoint.
+            className="font-display text-[clamp(1.75rem,5vw,2.5rem)] font-semibold leading-[1.15]"
+          >
+            {title}
+          </motion.h2>
+        </span>
 
         {description && (
           <motion.p
-            variants={fadeUp}
+            variants={blurUp}
             className="mt-4 text-sm leading-relaxed text-ink-muted sm:text-base"
           >
             {description}

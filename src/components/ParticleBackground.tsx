@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { useMotionProfile } from '../lib/useMotionProfile'
 
 interface Particle {
   x: number
@@ -18,9 +19,17 @@ const COLORS = [
   'rgba(236, 72, 153,', // pink
 ]
 
-const LINK_DISTANCE = 120
-const MOUSE_LINK_DISTANCE = 150
-const MOUSE_FORCE_DISTANCE = 200
+const LINK_DISTANCE = 140
+const MOUSE_LINK_DISTANCE = 170
+const MOUSE_FORCE_DISTANCE = 220
+
+/** Squared thresholds: the inner loops compare distances, never need them. */
+const LINK_DISTANCE_SQ = LINK_DISTANCE * LINK_DISTANCE
+const MOUSE_LINK_DISTANCE_SQ = MOUSE_LINK_DISTANCE * MOUSE_LINK_DISTANCE
+const MOUSE_FORCE_DISTANCE_SQ = MOUSE_FORCE_DISTANCE * MOUSE_FORCE_DISTANCE
+
+/** Frame budget per tier. Phones run at half rate; nobody can tell on drift. */
+const LITE_FRAME_MS = 1000 / 30
 
 /**
  * Ambient constellation canvas.
@@ -30,15 +39,23 @@ const MOUSE_FORCE_DISTANCE = 200
  * through `useState` re-ran this effect on every mousemove, which tore down
  * the loop and re-seeded every particle at a random position dozens of times
  * a second.
+ *
+ * The field has two settings. On the full tier it is what it always was: a
+ * dense constellation that links neighbours, reacts to the cursor and draws
+ * threads back to it. On the lite tier the link pass is dropped entirely and
+ * the frame rate is halved — the linking loop is O(n²) and, together with a
+ * full-viewport clear at device pixel ratio on every frame, it was the canvas
+ * competing with the scroll for the same main thread.
  */
 export default function ParticleBackground() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const { isLite } = useMotionProfile()
 
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
 
-    const ctx = canvas.getContext('2d')
+    const ctx = canvas.getContext('2d', { alpha: true })
     if (!ctx) return
 
     const prefersReducedMotion = window.matchMedia(
@@ -51,17 +68,22 @@ export default function ParticleBackground() {
     const mouse = { x: -9999, y: -9999 }
     let width = 0
     let height = 0
-    let dpr = 1
 
     const seed = () => {
-      const count = width < 768 ? 28 : 70
+      // Density scales with area rather than a flat count, so a wide desktop
+      // isn't sparse and a phone isn't crowded — capped at both ends.
+      const area = width * height
+      const count = isLite
+        ? Math.min(18, Math.round(area / 62000))
+        : Math.min(80, Math.round(area / 22000))
+
       particles.length = 0
       for (let i = 0; i < count; i++) {
         particles.push({
           x: Math.random() * width,
           y: Math.random() * height,
-          vx: (Math.random() - 0.5) * 0.8,
-          vy: (Math.random() - 0.5) * 0.8,
+          vx: (Math.random() - 0.5) * (isLite ? 0.4 : 0.8),
+          vy: (Math.random() - 0.5) * (isLite ? 0.4 : 0.8),
           size: Math.random() * 2.5 + 0.5,
           alpha: Math.random() * 0.5 + 0.2,
           color: COLORS[Math.floor(Math.random() * COLORS.length)],
@@ -81,7 +103,10 @@ export default function ParticleBackground() {
 
       width = nextWidth
       height = nextHeight
-      dpr = Math.min(window.devicePixelRatio || 1, 2)
+      // A retina phone at dpr 3 asks the GPU to clear nine times the pixels of
+      // a dpr-1 buffer every frame, for dots nobody is inspecting. 1.5 is the
+      // point past which the extra resolution stops being visible here.
+      const dpr = Math.min(window.devicePixelRatio || 1, isLite ? 1.5 : 2)
 
       canvas.width = Math.floor(width * dpr)
       canvas.height = Math.floor(height * dpr)
@@ -103,21 +128,38 @@ export default function ParticleBackground() {
     }
 
     resize()
-    window.addEventListener('resize', resize)
-    window.addEventListener('mousemove', handleMouseMove, { passive: true })
-    document.addEventListener('mouseleave', handleMouseLeave)
+    window.addEventListener('resize', resize, { passive: true })
+
+    // No hover on the lite tier, so none of the pointer machinery is wired up
+    // at all — no listener, no force pass, no thread pass.
+    if (!isLite) {
+      window.addEventListener('mousemove', handleMouseMove, { passive: true })
+      document.addEventListener('mouseleave', handleMouseLeave)
+    }
 
     let frame = 0
     let paused = document.hidden
+    let lastFrameTime = 0
 
     const handleVisibility = () => {
       paused = document.hidden
-      if (!paused) frame = requestAnimationFrame(animate)
+      if (!paused && !frame) frame = requestAnimationFrame(animate)
     }
     document.addEventListener('visibilitychange', handleVisibility)
 
-    function animate() {
+    function animate(now: number) {
+      frame = 0
       if (!ctx || paused) return
+
+      // Half rate on lite. The drift is slow enough that 30fps is
+      // indistinguishable from 60, and it hands every other frame back to the
+      // scroll.
+      if (isLite && now - lastFrameTime < LITE_FRAME_MS) {
+        frame = requestAnimationFrame(animate)
+        return
+      }
+      lastFrameTime = now
+
       ctx.clearRect(0, 0, width, height)
 
       for (const particle of particles) {
@@ -127,28 +169,31 @@ export default function ParticleBackground() {
         if (particle.x < 0 || particle.x > width) particle.vx *= -1
         if (particle.y < 0 || particle.y > height) particle.vy *= -1
 
-        // Push away from the pointer. Guard the divide so a particle sitting
-        // exactly under the cursor doesn't turn its velocity into NaN.
-        const dx = mouse.x - particle.x
-        const dy = mouse.y - particle.y
-        const distance = Math.hypot(dx, dy)
+        if (!isLite) {
+          // Push away from the pointer. Guard the divide so a particle sitting
+          // exactly under the cursor doesn't turn its velocity into NaN.
+          const dx = mouse.x - particle.x
+          const dy = mouse.y - particle.y
+          const distanceSq = dx * dx + dy * dy
 
-        if (distance > 0.001 && distance < MOUSE_FORCE_DISTANCE) {
-          const force = (MOUSE_FORCE_DISTANCE - distance) / MOUSE_FORCE_DISTANCE
-          particle.vx -= (dx / distance) * force * 0.6
-          particle.vy -= (dy / distance) * force * 0.6
+          if (distanceSq > 0.000001 && distanceSq < MOUSE_FORCE_DISTANCE_SQ) {
+            const distance = Math.sqrt(distanceSq)
+            const force = (MOUSE_FORCE_DISTANCE - distance) / MOUSE_FORCE_DISTANCE
+            particle.vx -= (dx / distance) * force * 0.6
+            particle.vy -= (dy / distance) * force * 0.6
+          }
+
+          particle.vx *= 0.99
+          particle.vy *= 0.99
+
+          const speedSq = particle.vx * particle.vx + particle.vy * particle.vy
+          if (speedSq < 0.04) {
+            particle.vx += (Math.random() - 0.5) * 0.1
+            particle.vy += (Math.random() - 0.5) * 0.1
+          }
         }
 
-        particle.vx *= 0.99
-        particle.vy *= 0.99
-
-        const speed = Math.hypot(particle.vx, particle.vy)
-        if (speed < 0.2) {
-          particle.vx += (Math.random() - 0.5) * 0.1
-          particle.vy += (Math.random() - 0.5) * 0.1
-        }
-
-        particle.pulsePhase += 0.05
+        particle.pulsePhase += isLite ? 0.02 : 0.05
         const pulse = (Math.sin(particle.pulsePhase) + 1) / 2
         const currentAlpha = particle.alpha * (0.5 + pulse * 0.5)
         const currentSize = particle.size * (0.8 + pulse * 0.4)
@@ -160,42 +205,47 @@ export default function ParticleBackground() {
       }
 
       // Links between neighbours. Indexed loops avoid allocating a sliced
-      // array per particle on every single frame.
-      ctx.lineWidth = 1
-      for (let i = 0; i < particles.length; i++) {
-        const a = particles[i]
-        for (let j = i + 1; j < particles.length; j++) {
-          const b = particles[j]
-          const dx = a.x - b.x
-          const dy = a.y - b.y
-          const distance = Math.hypot(dx, dy)
-          if (distance >= LINK_DISTANCE) continue
+      // array per particle on every single frame, and the comparison stays in
+      // squared space so the common case — a pair that is too far apart —
+      // costs no square root at all.
+      if (!isLite) {
+        ctx.lineWidth = 1
+        for (let i = 0; i < particles.length; i++) {
+          const a = particles[i]
+          for (let j = i + 1; j < particles.length; j++) {
+            const b = particles[j]
+            const dx = a.x - b.x
+            const dy = a.y - b.y
+            const distanceSq = dx * dx + dy * dy
+            if (distanceSq >= LINK_DISTANCE_SQ) continue
 
-          const opacity = 0.14 * (1 - distance / LINK_DISTANCE)
-          ctx.beginPath()
-          ctx.moveTo(a.x, a.y)
-          ctx.lineTo(b.x, b.y)
-          ctx.strokeStyle = `${a.color} ${opacity})`
-          ctx.stroke()
+            const opacity =
+              0.14 * (1 - Math.sqrt(distanceSq) / LINK_DISTANCE)
+            ctx.beginPath()
+            ctx.moveTo(a.x, a.y)
+            ctx.lineTo(b.x, b.y)
+            ctx.strokeStyle = `${a.color} ${opacity})`
+            ctx.stroke()
+          }
         }
-      }
 
-      // Links to the pointer.
-      if (mouse.x > -9998) {
-        ctx.lineWidth = 0.5
-        for (const particle of particles) {
-          const distance = Math.hypot(
-            mouse.x - particle.x,
-            mouse.y - particle.y,
-          )
-          if (distance >= MOUSE_LINK_DISTANCE) continue
+        // Links to the pointer.
+        if (mouse.x > -9998) {
+          ctx.lineWidth = 0.5
+          for (const particle of particles) {
+            const dx = mouse.x - particle.x
+            const dy = mouse.y - particle.y
+            const distanceSq = dx * dx + dy * dy
+            if (distanceSq >= MOUSE_LINK_DISTANCE_SQ) continue
 
-          const opacity = 0.2 * (1 - distance / MOUSE_LINK_DISTANCE)
-          ctx.beginPath()
-          ctx.moveTo(particle.x, particle.y)
-          ctx.lineTo(mouse.x, mouse.y)
-          ctx.strokeStyle = `rgba(94, 234, 212, ${opacity})`
-          ctx.stroke()
+            const opacity =
+              0.24 * (1 - Math.sqrt(distanceSq) / MOUSE_LINK_DISTANCE)
+            ctx.beginPath()
+            ctx.moveTo(particle.x, particle.y)
+            ctx.lineTo(mouse.x, mouse.y)
+            ctx.strokeStyle = `rgba(94, 234, 212, ${opacity})`
+            ctx.stroke()
+          }
         }
       }
 
@@ -205,20 +255,20 @@ export default function ParticleBackground() {
     frame = requestAnimationFrame(animate)
 
     return () => {
-      cancelAnimationFrame(frame)
+      if (frame) cancelAnimationFrame(frame)
       window.removeEventListener('resize', resize)
       window.removeEventListener('mousemove', handleMouseMove)
       document.removeEventListener('mouseleave', handleMouseLeave)
       document.removeEventListener('visibilitychange', handleVisibility)
     }
-  }, [])
+  }, [isLite])
 
   return (
     <canvas
       ref={canvasRef}
       aria-hidden="true"
       className="pointer-events-none fixed inset-0 z-0"
-      style={{ opacity: 0.45 }}
+      style={{ opacity: isLite ? 0.32 : 0.45 }}
     />
   )
 }

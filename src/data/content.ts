@@ -239,6 +239,78 @@ export const projects: Project[] = [
   },
 ]
 
+/** One line of the replayed Claude Code session in the AI section. */
+export type SessionLine = {
+  /** Drives the colour and the leading glyph. See `ClaudeTerminal`. */
+  kind: 'shell' | 'brand' | 'user' | 'tool' | 'ok'
+  text: string
+}
+
+export const aiPractice = {
+  eyebrow: 'ai_toolkit',
+  title: 'A year of building with Claude',
+  description:
+    'AI is part of how I actually work, not a tab I keep open. This is the whole setup — one tool, in the terminal, checked every time.',
+
+  paragraphs: [
+    "I have spent the past year learning Claude properly. Not asking it for snippets — learning how to brief it, how much context it needs before it is useful, and how to read what it gives back. Getting good at that took far longer than learning the tool itself.",
+    'Claude is an AI assistant built by Anthropic. What makes it worth the year is that it reads a whole codebase rather than a pasted fragment, follows the conventions a project already has, and explains its reasoning — so I can argue with it instead of copying from it.',
+  ],
+
+  /** The one-line claim the section is built around. */
+  callout:
+    'I use only Claude Code, and only in the terminal. No chat tab, no editor plugin, nothing pasted between windows.',
+
+  stats: [
+    { label: 'working with claude', value: '1 year' },
+    { label: 'the only ai tool', value: 'Claude Code' },
+    { label: 'where it runs', value: 'Terminal' },
+    { label: 'pasted from a chat tab', value: 'None' },
+  ],
+
+  principles: [
+    {
+      icon: 'context',
+      title: 'Context before questions',
+      detail:
+        'Point it at the repo, the conventions and the constraint first. A vague prompt gets a generic answer no matter which model is behind it.',
+    },
+    {
+      icon: 'verify',
+      title: 'Verify, then trust',
+      detail:
+        'Typecheck, lint, build, read the diff. Everything it writes is a draft until the toolchain agrees with it.',
+    },
+    {
+      icon: 'depth',
+      title: 'One tool, learned deeply',
+      detail:
+        'A year inside a single tool beat spreading thin across five. I know what it is good at and, more usefully, where it is not.',
+    },
+    {
+      icon: 'terminal',
+      title: 'Where the work already is',
+      detail:
+        'It runs next to git, the dev server and the build, so there is no copying between a browser tab and an editor.',
+    },
+  ],
+
+  /**
+   * Replayed by `ClaudeTerminal`. These are the real steps from the session
+   * that rebuilt the skills grid — keep them short; the widget types every
+   * character and a long line stalls the whole sequence.
+   */
+  session: [
+    { kind: 'shell', text: '~/portfolio $ claude' },
+    { kind: 'brand', text: 'Claude Code — connected to ~/portfolio' },
+    { kind: 'user', text: 'preview 4 skills per category, collapse the rest' },
+    { kind: 'tool', text: 'Read  src/components/Skills.tsx' },
+    { kind: 'tool', text: 'Edit  src/components/Skills.tsx  +42 -16' },
+    { kind: 'ok', text: 'tsc + eslint + vite build — all clean' },
+    { kind: 'user', text: 'ship it' },
+  ] satisfies SessionLine[],
+}
+
 export type Interest = {
   name: string
   detail: string

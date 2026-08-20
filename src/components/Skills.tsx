@@ -20,8 +20,11 @@ import {
   inView,
   inViewEarly,
   fadeUp,
+  scaleIn,
   staggerParent,
+  hoverOnly,
 } from '../lib/motion'
+import { useTilt } from '../lib/pointerFx'
 
 type CategoryStyle = { icon: LucideIcon; accent: string }
 
@@ -120,8 +123,8 @@ export default function Skills() {
           {stats.map((stat) => (
             <motion.div
               key={stat.label}
-              variants={fadeUp}
-              className="glass-card rounded-2xl px-4 py-4 sm:px-5 sm:py-5"
+              variants={scaleIn}
+              className="glass-card rounded-2xl px-4 py-4 transition-colors duration-300 hover:border-signal/25 sm:px-5 sm:py-5"
             >
               <dt className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-faint">
                 {stat.label}
@@ -254,103 +257,19 @@ export default function Skills() {
 
                   {/* Skill cards */}
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
-                    {shown.map((item, i) => {
-                      // Preview cards ride the parent's scroll stagger. Cards
-                      // revealed by "Show more" mount while the parent is
-                      // already in its `show` state, so they would otherwise
-                      // snap in — an explicit initial/animate pair opts them
-                      // out of variant inheritance and gives them their own
-                      // entrance.
-                      const isRevealed = i >= PREVIEW_COUNT
-                      const entrance = isRevealed
-                        ? {
-                            initial: { opacity: 0, y: 10 },
-                            animate: { opacity: 1, y: 0 },
-                            transition: {
-                              duration: 0.35,
-                              delay: (i - PREVIEW_COUNT) * 0.04,
-                              ease: ease.out,
-                            },
-                          }
-                        : { variants: fadeUp }
-
-                      // Logos keep the true brand colour; text and bars use a
-                      // lightened variant so dark marks stay legible on near-black.
-                      const brand = readableAccent(getTechMeta(item.name).color)
-
-                      return (
-                        <motion.article
-                          key={item.name}
-                          {...entrance}
-                          whileHover={{ y: -6 }}
-                          className="skill-card group relative flex h-full flex-col rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4 transition-colors duration-300 hover:border-white/20 sm:p-5"
-                          style={{ '--brand': brand } as React.CSSProperties}
-                        >
-                          <div className="mb-4 flex items-start justify-between gap-3">
-                            <div
-                              className="flex h-12 w-12 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] transition-transform duration-300 group-hover:scale-105 sm:h-14 sm:w-14"
-                              style={{
-                                boxShadow: `inset 0 0 24px -14px ${brand}`,
-                              }}
-                            >
-                              <TechIcon
-                                name={item.name}
-                                className="h-6 w-6 sm:h-7 sm:w-7"
-                              />
-                            </div>
-
-                            <span
-                              className="rounded-full border px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider"
-                              style={{
-                                color: brand,
-                                borderColor: `${brand}33`,
-                                backgroundColor: `${brand}14`,
-                              }}
-                            >
-                              {proficiency(item.level)}
-                            </span>
-                          </div>
-
-                          <h4 className="font-display text-base font-semibold text-ink">
-                            {item.name}
-                          </h4>
-                          <p className="mt-1 flex-1 text-xs leading-relaxed text-ink-muted">
-                            {item.note}
-                          </p>
-
-                          <div className="mt-4">
-                            <div className="mb-1.5 flex items-center justify-between font-mono text-[10px] text-ink-faint">
-                              <span>proficiency</span>
-                              <span style={{ color: brand }}>
-                                {item.level}%
-                              </span>
-                            </div>
-                            <div
-                              role="progressbar"
-                              aria-label={`${item.name} proficiency`}
-                              aria-valuenow={item.level}
-                              aria-valuemin={0}
-                              aria-valuemax={100}
-                              className="h-1.5 overflow-hidden rounded-full bg-white/[0.07]"
-                            >
-                              <motion.div
-                                initial={{ width: 0 }}
-                                animate={{ width: `${item.level}%` }}
-                                transition={{
-                                  duration: 0.9,
-                                  delay: 0.15,
-                                  ease: ease.out,
-                                }}
-                                className="h-full rounded-full"
-                                style={{
-                                  background: `linear-gradient(90deg, ${brand}66, ${brand})`,
-                                }}
-                              />
-                            </div>
-                          </div>
-                        </motion.article>
-                      )
-                    })}
+                    {shown.map((item, i) => (
+                      <SkillCard
+                        key={item.name}
+                        name={item.name}
+                        note={item.note}
+                        level={item.level}
+                        // Preview cards ride the parent's scroll stagger.
+                        // Cards revealed by "Show more" mount while the parent
+                        // is already in its `show` state, so they would
+                        // otherwise snap in.
+                        revealIndex={i >= PREVIEW_COUNT ? i - PREVIEW_COUNT : -1}
+                      />
+                    ))}
                   </div>
 
                   {category.items.length > PREVIEW_COUNT && (
@@ -382,5 +301,110 @@ export default function Skills() {
         </AnimatePresence>
       </div>
     </section>
+  )
+}
+
+/**
+ * One technology tile.
+ *
+ * Two details here are load-bearing:
+ *
+ * 1. Cards past the preview cut get an explicit `initial`/`animate` pair
+ *    instead of `variants={fadeUp}`. They mount while the parent is already in
+ *    its `show` state, so inheriting the variant would snap them in with no
+ *    animation at all.
+ * 2. The proficiency bar animates `scaleX`, not `width`. Width is a layout
+ *    property: twenty bars growing at once relaid out twenty rows of the grid
+ *    on every frame of the reveal. Scale is composited and costs nothing.
+ */
+function SkillCard({
+  name,
+  note,
+  level,
+  revealIndex,
+}: {
+  name: string
+  note: string
+  level: number
+  /** -1 for a preview card; otherwise its position among the revealed ones. */
+  revealIndex: number
+}) {
+  const tiltRef = useTilt<HTMLElement>()
+
+  // Logos keep the true brand colour; text and bars use a lightened variant
+  // so dark marks stay legible on near-black.
+  const brand = readableAccent(getTechMeta(name).color)
+
+  const entrance =
+    revealIndex >= 0
+      ? {
+          initial: { opacity: 0, y: 10 },
+          animate: { opacity: 1, y: 0 },
+          transition: {
+            duration: 0.35,
+            delay: revealIndex * 0.04,
+            ease: ease.out,
+          },
+        }
+      : { variants: fadeUp }
+
+  return (
+    <motion.article
+      ref={tiltRef}
+      {...entrance}
+      {...hoverOnly({ whileHover: { y: -6 } })}
+      className="skill-card tilt-glow group flex h-full flex-col rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4 transition-colors duration-300 hover:border-white/20 sm:p-5"
+      style={{ '--brand': brand } as React.CSSProperties}
+    >
+      <div className="mb-4 flex items-start justify-between gap-3">
+        <div
+          className="flex h-12 w-12 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] transition-transform duration-300 group-hover:scale-105 sm:h-14 sm:w-14"
+          style={{ boxShadow: `inset 0 0 24px -14px ${brand}` }}
+        >
+          <TechIcon name={name} className="h-6 w-6 sm:h-7 sm:w-7" />
+        </div>
+
+        <span
+          className="rounded-full border px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider"
+          style={{
+            color: brand,
+            borderColor: `${brand}33`,
+            backgroundColor: `${brand}14`,
+          }}
+        >
+          {proficiency(level)}
+        </span>
+      </div>
+
+      <h4 className="font-display text-base font-semibold text-ink">{name}</h4>
+      <p className="mt-1 flex-1 text-xs leading-relaxed text-ink-muted">
+        {note}
+      </p>
+
+      <div className="mt-4">
+        <div className="mb-1.5 flex items-center justify-between font-mono text-[10px] text-ink-faint">
+          <span>proficiency</span>
+          <span style={{ color: brand }}>{level}%</span>
+        </div>
+        <div
+          role="progressbar"
+          aria-label={`${name} proficiency`}
+          aria-valuenow={level}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          className="h-1.5 overflow-hidden rounded-full bg-white/[0.07]"
+        >
+          <motion.div
+            initial={{ scaleX: 0 }}
+            animate={{ scaleX: level / 100 }}
+            transition={{ duration: 0.9, delay: 0.15, ease: ease.out }}
+            className="h-full w-full origin-left rounded-full"
+            style={{
+              background: `linear-gradient(90deg, ${brand}66, ${brand})`,
+            }}
+          />
+        </div>
+      </div>
+    </motion.article>
   )
 }

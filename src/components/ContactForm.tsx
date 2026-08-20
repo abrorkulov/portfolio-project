@@ -67,17 +67,12 @@ ${formData.email}`
       transition={{ delay: 0.4 }}
       className="glass-card glow-border relative z-10 overflow-hidden rounded-2xl p-5 sm:p-8"
     >
-      {/* Animated background gradient */}
-      <motion.div
-        className="absolute inset-0 bg-gradient-to-br from-signal/5 via-transparent to-pulse/5"
-        animate={{
-          opacity: [0.3, 0.5, 0.3],
-        }}
-        transition={{
-          duration: 4,
-          repeat: Infinity,
-          ease: 'easeInOut',
-        }}
+      {/* Background wash. This used to pulse its opacity forever, which is a
+          full-panel repaint every frame for an effect nobody consciously
+          notices — and it kept running while the form was off-screen. */}
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 bg-gradient-to-br from-signal/[0.06] via-transparent to-pulse/[0.06]"
       />
 
       <div className="relative z-10">
@@ -100,18 +95,15 @@ ${formData.email}`
             animate={{ opacity: 1, scale: 1 }}
             className="flex flex-col items-center justify-center py-12 text-center"
           >
+            {/* The tick used to spin forever, which reads as "still working"
+                rather than "done". It now lands once and stays put. */}
             <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
-              className="w-20 h-20 rounded-full bg-gradient-to-br from-signal to-pulse flex items-center justify-center mb-4 shadow-lg shadow-signal/30"
+              initial={{ scale: 0, rotate: -25 }}
+              animate={{ scale: 1, rotate: 0 }}
+              transition={{ delay: 0.15, type: 'spring', stiffness: 220, damping: 14 }}
+              className="mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-signal to-pulse shadow-lg shadow-signal/30"
             >
-              <motion.div
-                animate={{ rotate: [0, 360] }}
-                transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
-              >
-                <CheckCircle className="h-10 w-10 text-white" />
-              </motion.div>
+              <CheckCircle className="h-10 w-10 text-white" />
             </motion.div>
             <motion.p
               initial={{ opacity: 0, y: 10 }}

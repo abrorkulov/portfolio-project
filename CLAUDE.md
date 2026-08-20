@@ -49,7 +49,10 @@ Every string, skill, project and timeline entry lives here so components stay pr
 
 | File | Role |
 |---|---|
-| `motion.ts` | **The motion vocabulary.** `ease`, `spring`, `fadeUp`, `staggerParent`, `inView`. Every section imports from here — this is what makes the scroll feel like one site. |
+| `useMotionProfile.ts` | **The motion tier.** Decides `full` vs `lite` once from pointer type, viewport, device memory and reduced-motion; stamps it on `<html data-motion>` before first paint. Read this before touching anything below. |
+| `motion.ts` | **The motion vocabulary.** `ease`, `spring`, `fadeUp`, `blurUp`, `lineReveal`, `scaleIn`, `driftIn`, `staggerParent`, `inView`, `hoverOnly`. Every value is tier-aware. |
+| `pointerFx.ts` | `useMagnetic` (buttons lean toward the cursor) and `useTilt` (card tilt + pointer-tracked highlight). Full tier only; refs and rAF, never state. |
+| `useScrollSpy.ts` | `useScrollSpy` (IntersectionObserver, shared by the navbar and the scroll rail) and `useScrolledPast` (rAF-throttled `scrollY`). |
 | `techMeta.ts` | Brand colour + icon-CDN slug + fallback monogram for all 41 technologies. Also `readableAccent()`. |
 | `useCanSupport3D.ts` | Gates the WebGL hero: ≥1024px, WebGL present, not reduced-motion. |
 | `analytics.ts` | Section-view IntersectionObserver; dispatches a `portfolio_analytics` CustomEvent. No third party. |
@@ -60,7 +63,8 @@ Every string, skill, project and timeline entry lives here so components stay pr
 `Navbar` → `Hero` (+`Hero3D`/`Hero3DFallback`) → `About` → `TrainTimeline` → `Skills` →
 playground (`PacketRunner`, `CodePlayground`) → `Projects` → `Footer` (+`ContactForm`).
 
-Cross-cutting: `ParticleBackground` (fixed canvas), `ScrollProgress` (top bar, side dots, FABs),
+Cross-cutting: `ParticleBackground` (fixed canvas), `CursorGlow` (full tier only),
+`ScrollProgress` (top bar, side rail, FABs),
 `SectionHeader` (numbered eyebrow/title/description/aside), `Panel` (shared chrome for the
 playground widgets), `ErrorBoundary`, `TechIcon`.
 
@@ -87,6 +91,43 @@ three + @react-three/fiber + drei · lucide-react · recharts (only used by the 
 - **Comments explain *why*, never *what*.** Several comments in this repo record a bug that was
   fixed and why the code must stay that way — do not delete them.
 - **Content lives in `content.ts`; components render it.**
+
+### Motion tiers — the page has two performances
+
+`useMotionProfile.ts` picks one of two budgets at startup and never changes it:
+
+- **`full`** — fine pointer, ≥1024px, healthy hardware. Backdrop blur, animated gradients,
+  cursor-tracked highlights, card tilt, magnetic buttons, longer travel, blur reveals.
+- **`lite`** — touch, narrow, low device memory, or reduced-motion. Same choreography, expensive
+  parts removed: no `filter`/`clip-path` animation, no backdrop blur, no pointer listeners,
+  shorter travel, tighter staggers, half-rate particle canvas.
+
+There are **two gates and you usually want both**:
+
+1. `@media (hover: hover) and (pointer: fine) and (min-width: 1024px)` in `index.css`. No
+   JavaScript, correct on the first frame. This is where paint-cost decisions belong.
+2. `html[data-motion='lite']`, stamped by `syncMotionTier()` in `main.tsx` before React mounts.
+   It outranks the media query and catches what CSS cannot see — low memory, reduced-motion.
+
+In TypeScript: `motion.ts` reads the tier **once at import** and bakes it into the variants. That
+is deliberate — a variant object whose identity changed mid-session would restart every animation
+using it. Components that need a live value call `useMotionProfile()`, which does re-evaluate on
+resize and pointer change.
+
+Wrap hover gestures in `hoverOnly({ whileHover: … })`. A `whileHover` prop makes Framer attach
+pointer listeners a touch device can never fire, and the skills grid was paying for 41 of them.
+
+### Pointer effects own `transform` — Framer must not
+
+`useTilt` writes `transform` (via `.tilt-surface`) straight onto its element. Framer Motion writes
+an **inline** `transform` for every variant, and inline beats a class every time. So:
+
+- `.tilt-surface` (tilt + highlight + hover lift) goes on an element **Framer is not animating** —
+  give the card a `motion` wrapper for its entrance and put the surface on a plain inner div.
+- `.tilt-glow` (highlight only, no transform) is safe directly on a `motion` component. Use it when
+  a wrapper would break the markup — the About fact tiles are `dt`/`dd` inside a `dl`.
+
+Same rule for `useMagnetic`: its element must be a plain `<a>`, never a `motion.a`.
 
 ### Motion — always use `src/lib/motion.ts`
 
@@ -158,13 +199,31 @@ removed over trademark requests) and throttles when ~29 requests fire at once. S
 
 ### Performance rules
 
+These five are the mobile-jank list. Each one was measured, not guessed.
+
+- **Never `background-attachment: fixed`.** The ambient wash used to sit on `body` that way. A
+  fixed background cannot be moved by the compositor, so every scroll frame repainted three
+  radial gradients across the whole viewport — the single largest cause of stutter on phones.
+  It now lives on a `position: fixed` `body::before`, which the compositor just slides.
+- **Backdrop blur is full-tier only.** `.glass-card` has a dozen instances on screen at once and
+  each one makes the compositor re-read the pixels behind it every frame it moves. On `lite` the
+  translucency is faked with a slightly lighter opaque fill; against near-black nobody can tell.
+- **Animate `transform`/`opacity`, never `width`/`top`.** The proficiency bars grew via `width`,
+  relaying out twenty grid rows per frame — they now scale `scaleX` from a left origin. The
+  timeline train drove `top`; it now measures the rail once and drives `y` in pixels.
+- **Never read layout in a scroll handler.** The navbar and the scroll rail each ran their own
+  `scroll` listener calling `element.offsetTop`, which forces a synchronous layout flush — twice
+  per event, mid-scroll. Both now share `useScrollSpy` (IntersectionObserver) and
+  `useScrolledPast` (rAF-throttled, reads `scrollY` only).
 - **Never put `three` in `manualChunks`.** Naming it there pulls it into the entry's preload graph —
   270 kB gzipped on every first paint, including phones where the canvas never renders. `Hero3D` is
   `lazy()`-imported and Rollup keeps three inside that chunk.
 - **Never drive per-frame values through React state.** `ParticleBackground` and `Hero3D` keep
   pointer position in refs. Putting it in state re-ran the effect on every mousemove and re-seeded
   every particle dozens of times a second.
-- Canvases pause when off-screen or hidden (`IntersectionObserver` + `visibilitychange`).
+- Canvases pause when off-screen or hidden (`IntersectionObserver` + `visibilitychange`). The
+  particle field also halves its frame rate, drops the O(n²) link pass, caps DPR at 1.5 and wires
+  up no pointer listeners at all on `lite`.
 
 ### Service worker (`public/sw.js`) — read before editing
 
@@ -238,6 +297,31 @@ If you change the strategy, bump `CACHE_NAME`.
   defined in `content.ts` but never rendered anywhere. Only entries whose URL points past the domain
   root are shown, so the bare placeholders stay hidden until they are filled in.
 
+**Session 4 — two-tier motion: smoother phones, richer desktop**
+
+The brief was "phone stutters, desktop should be more animated, and the whole thing should look
+more modern." That is two problems, so the page now has two performances.
+
+- **Built the tier system.** `useMotionProfile.ts`, `html[data-motion]`, and a matching media-query
+  gate in `index.css`. `motion.ts` variants, viewport thresholds, travel distances and stagger
+  gaps are all derived from the tier.
+- **Fixed the four things that were actually costing frames on a phone**: the fixed-attachment
+  background wash, backdrop blur on every card, `width`-animated progress bars, and two scroll
+  handlers reading `offsetTop` on every event. See *Performance rules* above for each.
+- **Rewrote the particle field per tier.** Density now scales with viewport area; `lite` runs at
+  30fps, skips the O(n²) link pass entirely, caps DPR at 1.5 and registers no pointer listeners.
+  Squared-distance comparisons keep the square root off the inner loop on `full`.
+- **Added the desktop layer**: `CursorGlow` (a lagging pool of light, transform-only), `useMagnetic`
+  on the hero CTAs and nav button, `useTilt` on 34 card surfaces, a sheen that crosses the project
+  cards on hover, a slow drift on the background wash, and a highlight that travels the headline.
+- **Reworked the entrances.** New `blurUp`, `lineReveal`, `scaleIn` and `driftIn` variants; every
+  heading on the page — hero, all five section headers, the footer — now wipes up from behind its
+  own baseline, and each section header's hairline draws itself out.
+- **Navigation**: the nav's active state is a pill that slides between items, and the left rail is
+  a table of contents whose labels expand for the active section instead of six anonymous dots.
+- **Extracted components** where the tilt hook needed a non-Framer element: `SkillCard`,
+  `ProjectCard`, `TimelineCard`, `FactTile`, `ExpertiseCard`, `MagneticLink`.
+
 ### Fully operational
 
 Typecheck, lint and build are all clean. Verified in a real browser: all 41 skill cards render, all
@@ -248,7 +332,13 @@ Verified again after session 3: 20 skill cards collapsed / 41 expanded, 5 "Show 
 2 social links rendered (GitHub + LinkedIn — the rest are still placeholders), 13 panels, no
 duplicate IDs, no dead anchors, no horizontal overflow. The Code Playground runs and prints output.
 
-Build output: `index` ~64 kB gz + `motion-vendor` 43 kB gz + CSS ~8 kB gz on first paint;
+Verified again after session 4, in a real browser at the full tier: no console output of any
+kind, no duplicate IDs, no dead anchors, `scrollWidth === clientWidth` (no horizontal overflow),
+20 collapsed skill cards, 34 tilt surfaces, 9 line-reveal headings. Forcing
+`data-motion="lite"` confirmed the overrides land: opaque card fill, `backdrop-filter: none`,
+background animation off, tilt highlight removed.
+
+Build output: `index` ~68 kB gz + `motion-vendor` 43 kB gz + CSS ~9 kB gz on first paint;
 `Hero3D` 227 kB gz loads lazily and only on ≥1024px WebGL devices.
 
 ### Next steps
@@ -258,10 +348,13 @@ Build output: `index` ~64 kB gz + `motion-vendor` 43 kB gz + CSS ~8 kB gz on fir
    Vite, Machine Learning, Networking, Data Structures, Windows Internals) with **assumed**
    proficiency levels and notes. Jahongir must confirm or prune these — they are currently claims
    the site makes on his behalf.
-2. **Phone layout was never visually confirmed.** Browser-window emulation did not take effect in
-   the automation session, so the mobile work is reasoned (fluid type, svh, 44px targets, no fixed
-   widths — statically audited) but unverified. Open the site on a real phone and check the hero,
-   nav drawer and skills filter row.
+2. **Phone layout and the scroll spy were never visually confirmed.** Browser-window emulation
+   still does not take effect in the automation session, and the automated tab reports
+   `visibilityState: 'hidden'`, which suspends IntersectionObserver callbacks and smooth scrolling
+   — so the `lite` tier and `useScrollSpy` are verified by forcing `data-motion` and by geometry,
+   not by watching them. On a real phone, check: the hero, the nav drawer, the skills filter row,
+   and that scrolling now feels smooth. On any real browser, scroll the page and confirm the navbar
+   pill and the left rail track the section you are looking at.
 3. **Decide on the unrendered components** listed above — wire them in or delete them. Watch the
    `id="trajectory"` collision.
 4. **Three socials in `content.ts` are still bare placeholders** — `telegram: 'https://t.me/'`,

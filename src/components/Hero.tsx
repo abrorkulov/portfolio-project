@@ -1,10 +1,12 @@
-import { lazy, Suspense } from 'react'
-import { motion } from 'framer-motion'
+import { lazy, Suspense, useRef } from 'react'
+import { motion, useScroll, useTransform } from 'framer-motion'
 import Hero3DFallback from './Hero3DFallback'
 import { useCanSupport3D } from '../lib/useCanSupport3D'
+import { useMotionProfile } from '../lib/useMotionProfile'
+import { useMagnetic } from '../lib/pointerFx'
 import { profile } from '../data/content'
 import { ArrowDown, Sparkles, Zap } from 'lucide-react'
-import { ease, spring, staggerParent } from '../lib/motion'
+import { ease, lineReveal, staggerParent } from '../lib/motion'
 
 // Three.js is ~226 kB gzipped. Loading it lazily keeps it off the critical
 // path entirely — and phones, where useCanSupport3D declines to render the
@@ -21,12 +23,45 @@ const heroItem = {
   },
 }
 
+/** The three lines of the headline, each with its own gradient treatment. */
+const headline = [
+  { text: 'Frontend', className: 'text-sheen' },
+  {
+    text: '& AI/Systems',
+    className:
+      'bg-gradient-to-r from-pulse via-signal to-signal-bright bg-clip-text text-transparent',
+  },
+  {
+    text: 'Developer',
+    className:
+      'bg-gradient-to-r from-ink to-signal bg-clip-text text-transparent',
+  },
+]
+
 export default function Hero() {
   const canSupport3D = useCanSupport3D()
+  const { isFull } = useMotionProfile()
+  const sectionRef = useRef<HTMLElement>(null)
+
+  // The copy sinks and dissolves as the hero leaves, so the handoff to the
+  // next section is a dissolve rather than a hard edge. Transform and opacity
+  // only — both run on the compositor — and the travel is zeroed on the lite
+  // tier, where a scroll-linked effect competes with the scroll itself.
+  const { scrollYProgress } = useScroll({
+    target: sectionRef,
+    offset: ['start start', 'end start'],
+  })
+  const parallaxY = useTransform(scrollYProgress, [0, 1], [0, isFull ? 90 : 0])
+  const parallaxFade = useTransform(
+    scrollYProgress,
+    [0, 0.75],
+    [1, isFull ? 0.15 : 1],
+  )
 
   return (
     <section
       id="top"
+      ref={sectionRef}
       // min-h-[100svh] rather than 100vh: on iOS/Android the browser chrome
       // makes vh taller than the visible area, which pushed the scroll cue
       // below the fold on every phone.
@@ -51,7 +86,10 @@ export default function Hero() {
         )}
       </div>
 
-      <div className="relative z-10 mx-auto grid w-full max-w-7xl grid-cols-1 px-4 sm:px-6 md:grid-cols-2 lg:px-8">
+      <motion.div
+        style={{ y: parallaxY, opacity: parallaxFade }}
+        className="relative z-10 mx-auto grid w-full max-w-7xl grid-cols-1 px-4 sm:px-6 md:grid-cols-2 lg:px-8"
+      >
         <motion.div
           variants={staggerParent(0.1, 0.15)}
           initial="hidden"
@@ -60,7 +98,7 @@ export default function Hero() {
         >
           <motion.div
             variants={heroItem}
-            className="mb-6 inline-flex items-center gap-3 rounded-full glass-card border border-signal/20 px-3.5 py-1.5 sm:mb-8 sm:px-4 sm:py-2"
+            className="glass-card mb-6 inline-flex items-center gap-3 rounded-full border border-signal/20 px-3.5 py-1.5 sm:mb-8 sm:px-4 sm:py-2"
           >
             <span className="relative flex h-2 w-2">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-signal opacity-75" />
@@ -71,23 +109,26 @@ export default function Hero() {
             </span>
           </motion.div>
 
+          {/* Each line is masked by its own overflow-hidden wrapper and wiped
+              up from behind its baseline. The stagger between them is what
+              makes the headline read as typeset rather than as three
+              independently animated blocks. */}
           <motion.h1
-            variants={heroItem}
+            variants={staggerParent(0.12)}
             // Fluid clamp beats three breakpoint jumps — the headline never
             // wraps awkwardly at any width between 320px and 1920px.
-            className="font-display font-semibold leading-[1.05] text-[clamp(2.5rem,8vw,4.5rem)]"
+            className="font-display text-[clamp(2.5rem,8vw,4.5rem)] font-semibold leading-[1.05]"
           >
-            <span className="bg-gradient-to-r from-signal via-signal-bright to-pulse bg-clip-text text-transparent">
-              Frontend
-            </span>
-            <br />
-            <span className="bg-gradient-to-r from-pulse via-signal to-signal-bright bg-clip-text text-transparent">
-              &amp; AI/Systems
-            </span>
-            <br />
-            <span className="bg-gradient-to-r from-ink to-signal bg-clip-text text-transparent">
-              Developer
-            </span>
+            {headline.map((line) => (
+              <span key={line.text} className="reveal-line">
+                <motion.span
+                  variants={lineReveal}
+                  className={`block ${line.className}`}
+                >
+                  {line.text}
+                </motion.span>
+              </span>
+            ))}
           </motion.h1>
 
           <motion.div
@@ -114,6 +155,10 @@ export default function Hero() {
             className="mt-3 font-mono text-[11px] text-ink-faint sm:text-xs"
           >
             {profile.location} · {profile.role}
+            <span
+              aria-hidden="true"
+              className="ml-1 inline-block h-3 w-1.5 translate-y-[1px] animate-blink bg-signal/70"
+            />
           </motion.p>
 
           <motion.p
@@ -127,12 +172,9 @@ export default function Hero() {
             variants={heroItem}
             className="mt-8 flex flex-wrap items-center gap-3 sm:mt-12 sm:gap-4"
           >
-            <motion.a
+            <MagneticLink
               href="#projects"
-              whileHover={{ scale: 1.04 }}
-              whileTap={{ scale: 0.97 }}
-              transition={spring.snappy}
-              className="glow-border group relative min-h-[44px] overflow-hidden rounded-full border border-signal/30 bg-gradient-to-r from-signal/20 to-pulse/20 px-6 py-3 font-mono text-xs font-medium text-signal transition-colors hover:from-signal/30 hover:to-pulse/30 sm:px-8 sm:py-3.5 sm:text-sm"
+              className="glow-border group relative flex min-h-[44px] items-center overflow-hidden rounded-full border border-signal/30 bg-gradient-to-r from-signal/20 to-pulse/20 px-6 py-3 font-mono text-xs font-medium text-signal transition-colors duration-300 hover:from-signal/30 hover:to-pulse/30 sm:px-8 sm:py-3.5 sm:text-sm"
             >
               <motion.span
                 aria-hidden="true"
@@ -146,19 +188,17 @@ export default function Hero() {
                 }}
               />
               <span className="relative z-10">View projects</span>
-            </motion.a>
-            <motion.a
+            </MagneticLink>
+
+            <MagneticLink
               href="#contact"
-              whileHover={{ scale: 1.04 }}
-              whileTap={{ scale: 0.97 }}
-              transition={spring.snappy}
-              className="min-h-[44px] rounded-full glass-card border border-white/10 px-6 py-3 font-mono text-xs text-ink transition-colors hover:border-pulse/50 hover:bg-pulse/10 hover:text-pulse sm:px-8 sm:py-3.5 sm:text-sm"
+              className="glass-card flex min-h-[44px] items-center rounded-full border border-white/10 px-6 py-3 font-mono text-xs text-ink transition-colors duration-300 hover:border-pulse/50 hover:bg-pulse/10 hover:text-pulse sm:px-8 sm:py-3.5 sm:text-sm"
             >
               Get in touch
-            </motion.a>
+            </MagneticLink>
           </motion.div>
         </motion.div>
-      </div>
+      </motion.div>
 
       <motion.div
         initial={{ opacity: 0 }}
@@ -177,5 +217,29 @@ export default function Hero() {
         </span>
       </motion.div>
     </section>
+  )
+}
+
+/**
+ * A call-to-action that leans toward the cursor.
+ *
+ * The magnet writes `transform` directly on the anchor, so the anchor cannot
+ * also be a `motion` component — Framer would be writing the same property
+ * from the other direction and one of them would win at random.
+ */
+function MagneticLink({
+  href,
+  className,
+  children,
+}: {
+  href: string
+  className: string
+  children: React.ReactNode
+}) {
+  const ref = useMagnetic<HTMLAnchorElement>(0.25)
+  return (
+    <a ref={ref} href={href} className={className}>
+      {children}
+    </a>
   )
 }

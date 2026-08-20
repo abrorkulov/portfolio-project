@@ -10,6 +10,7 @@ import Footer from './components/Footer'
 import ErrorBoundary from './components/ErrorBoundary'
 import ScrollProgress from './components/ScrollProgress'
 import ParticleBackground from './components/ParticleBackground'
+import CursorGlow from './components/CursorGlow'
 import SectionHeader from './components/SectionHeader'
 
 // Code splitting heavy interactive components for performance optimization
@@ -40,6 +41,7 @@ export default function App() {
     <MotionConfig reducedMotion="user">
       <div className="relative min-h-screen overflow-x-hidden bg-void font-body text-ink">
         <ParticleBackground />
+        <CursorGlow />
         <ScrollProgress />
         <Navbar />
         <main>
