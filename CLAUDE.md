@@ -51,7 +51,8 @@ Every string, skill, project and timeline entry lives here so components stay pr
 |---|---|
 | `useMotionProfile.ts` | **The motion tier.** Decides `full` vs `lite` once from pointer type, viewport, device memory and reduced-motion; stamps it on `<html data-motion>` before first paint. Read this before touching anything below. |
 | `motion.ts` | **The motion vocabulary.** `ease`, `spring`, `fadeUp`, `blurUp`, `lineReveal`, `scaleIn`, `driftIn`, `staggerParent`, `inView`, `hoverOnly`. Every value is tier-aware. |
-| `pointerFx.ts` | `useMagnetic` (buttons lean toward the cursor) and `useTilt` (card tilt + pointer-tracked highlight). Full tier only; refs and rAF, never state. |
+| `pointerFx.ts` | `useMagnetic` (buttons lean toward the cursor) and `useTilt` (card tilt). Full tier only; refs and rAF, never state. |
+| `useNearViewport.ts` | Gate for work that should not happen until the reader is close to it. Holds the playground widgets back so their `lazy()` chunks are not fetched on first render. |
 | `useScrollSpy.ts` | `useScrollSpy` (IntersectionObserver, shared by the navbar and the scroll rail) and `useScrolledPast` (rAF-throttled `scrollY`). |
 | `techMeta.ts` | Brand colour + icon-CDN slug + fallback monogram for all 41 technologies. Also `readableAccent()`. |
 | `useCanSupport3D.ts` | Gates the WebGL hero: ≥1024px, WebGL present, not reduced-motion. |
@@ -61,6 +62,7 @@ Every string, skill, project and timeline entry lives here so components stay pr
 ### `src/components/` — rendered sections, in page order
 
 `Navbar` → `Hero` (+`Hero3D`/`Hero3DFallback`) → `About` → `TrainTimeline` → `Skills` →
+`AiPractice` (+`ClaudeTerminal`) →
 playground (`PacketRunner`, `CodePlayground`) → `Projects` → `Footer` (+`ContactForm`).
 
 Cross-cutting: `ParticleBackground` (fixed canvas), `CursorGlow` (full tier only),
@@ -68,8 +70,12 @@ Cross-cutting: `ParticleBackground` (fixed canvas), `CursorGlow` (full tier only
 `SectionHeader` (numbered eyebrow/title/description/aside), `Panel` (shared chrome for the
 playground widgets), `ErrorBoundary`, `TechIcon`.
 
-Sections are numbered 01–06 via `SectionHeader`'s `index` prop (the footer hand-rolls its own 06).
+Sections are numbered 01–07 via `SectionHeader`'s `index` prop (the footer hand-rolls its own 07).
 Keep them in order if you add or remove a section.
+
+The navbar switches to its drawer at **1024px**, not 768 — six links no longer fit beside the
+brand and the CTA at `md`. That boundary is also where the motion tier flips, so "drawer" and
+"lite" now mean the same set of devices.
 
 **Currently unrendered** (present but not imported by `App.tsx`): `LearningTrajectory`, `Gaming`,
 `DinoGame`, `Cert3DBackground`, `LoadingScreen`. Note `LearningTrajectory` also uses
@@ -92,15 +98,32 @@ three + @react-three/fiber + drei · lucide-react · recharts (only used by the 
   fixed and why the code must stay that way — do not delete them.
 - **Content lives in `content.ts`; components render it.**
 
-### Motion tiers — the page has two performances
+### Motion tiers — the page animates on desktop and holds still on phones
 
 `useMotionProfile.ts` picks one of two budgets at startup and never changes it:
 
-- **`full`** — fine pointer, ≥1024px, healthy hardware. Backdrop blur, animated gradients,
-  cursor-tracked highlights, card tilt, magnetic buttons, longer travel, blur reveals.
-- **`lite`** — touch, narrow, low device memory, or reduced-motion. Same choreography, expensive
-  parts removed: no `filter`/`clip-path` animation, no backdrop blur, no pointer listeners,
-  shorter travel, tighter staggers, half-rate particle canvas.
+- **`full`** — fine pointer, ≥1024px, healthy hardware. Backdrop blur, animated gradients, card
+  tilt, magnetic buttons, the 3D hero, the particle canvas, blur reveals, staggered entrances.
+- **`lite`** — touch, narrow, low device memory, or reduced-motion. **No animation at all.**
+
+`lite` used to mean "the same choreography, cheaper" — shorter travel, tighter staggers, a
+half-rate canvas. That was not enough, and it is worth knowing why before anyone reintroduces it:
+
+- Every entrance still meant Framer holding an animation for each of a few hundred elements.
+- An element that starts at `opacity: 0` **cannot be the Largest Contentful Paint** until its
+  observer has fired and its animation has run. The hero headline is the LCP element on a phone,
+  and it was costing seconds.
+- The canvas still cleared the full viewport and filled a few hundred particles every frame, on
+  the same main thread as the scroll, for decoration at 32% opacity.
+
+So on `lite`: every variant in `motion.ts` collapses to `STILL` (`{hidden:{}, show:{}}`), every
+CSS keyframe animation is turned off by a blanket rule in `index.css` (`.animate-spin` is the one
+exemption — it means "a chunk is still loading"), `ParticleBackground` returns `null`, and
+`<MotionConfig reducedMotion="always">` backstops anything that hand-rolls its own values.
+
+Components that hand-roll `initial`/`animate` instead of using the vocabulary must guard
+themselves: `initial={isLiteMotion ? false : {...}}`. `initial={false}` tells Framer to start at
+the animate state, which is exactly "render it finished".
 
 There are **two gates and you usually want both**:
 
@@ -116,6 +139,17 @@ resize and pointer change.
 
 Wrap hover gestures in `hoverOnly({ whileHover: … })`. A `whileHover` prop makes Framer attach
 pointer listeners a touch device can never fire, and the skills grid was paying for 41 of them.
+
+### Hover is a hairline, not a spotlight
+
+`.tilt-glow` and `.tilt-surface` used to carry a 340px radial highlight that followed the pointer
+across the card, which meant `useTilt` writing `--px`/`--py` on every frame of every hover. It read
+as a spotlight laid over the design rather than the card reacting to you.
+
+Hover is now one `box-shadow` transition: a 1px accent ring and a slightly brighter top edge. The
+same applies to `.skill-card`, whose brand-coloured radial bloom became a 1px gradient along the
+top edge. `useTilt` writes only `--rx`/`--ry` now, and `.tilt-glow` is pure CSS — **do not call
+`useTilt` for it**, there is nothing for the hook to drive.
 
 ### Pointer effects own `transform` — Framer must not
 
@@ -221,9 +255,19 @@ These five are the mobile-jank list. Each one was measured, not guessed.
 - **Never drive per-frame values through React state.** `ParticleBackground` and `Hero3D` keep
   pointer position in refs. Putting it in state re-ran the effect on every mousemove and re-seeded
   every particle dozens of times a second.
-- Canvases pause when off-screen or hidden (`IntersectionObserver` + `visibilitychange`). The
-  particle field also halves its frame rate, drops the O(n²) link pass, caps DPR at 1.5 and wires
-  up no pointer listeners at all on `lite`.
+- **Nothing decorative renders on `lite`.** The particle canvas returns `null`, the 3D hero never
+  loads (`useCanSupport3D` gates at 1024px), and every CSS keyframe is off. Canvases that do run
+  pause when off-screen or hidden (`IntersectionObserver` + `visibilitychange`).
+- **`lazy()` fetches on render, not on visibility.** The playground widgets sat in the first render
+  pass, so their chunks downloaded and their canvases mounted while the hero was still painting.
+  `useNearViewport` holds them until the reader is within 600px.
+- **The Google Fonts `<link>` must not block rendering.** It loads as `media="print"` and is
+  promoted to `all` on load, with a `<noscript>` fallback. As a plain stylesheet link it was the
+  single largest delay before anything appeared.
+- **`content-visibility: auto` on off-screen sections, `lite` only.** It implies paint containment,
+  which clips to the border box — that is why `.section-rule::after` is repositioned inside its box
+  on `lite`. It is only safe *because* nothing animates on that tier: with `whileInView` entrances
+  the skipped subtrees would not reveal correctly.
 
 ### Service worker (`public/sw.js`) — read before editing
 
@@ -322,6 +366,70 @@ more modern." That is two problems, so the page now has two performances.
 - **Extracted components** where the tilt hook needed a non-Framer element: `SkillCard`,
   `ProjectCard`, `TimelineCard`, `FactTile`, `ExpertiseCard`, `MagneticLink`.
 
+**Session 5 — the AI section, a rebuilt contact block, more phone headroom**
+
+- **Added section 04, "A year of building with Claude"** (`AiPractice.tsx`, `id="ai"`), between
+  Skills and the playground. The copy and `ClaudeTerminal` had been written in session 4 but were
+  never wired to a section or imported anywhere. Playground, Projects and the footer shifted to
+  05/06/07, and the section is in the navbar and the scroll rail.
+- **Drew `public/claude-code.svg`** — a depiction of the CLI (welcome banner, a Read/Update/Bash
+  transcript, the prompt), not a capture, so it is ~4 kB and sharp at any size. Dropping a real
+  screenshot at the same path swaps it with no code change. `aiPractice.image` in `content.ts`
+  carries the src, alt and caption.
+- **Added the `claude` colour** (`#D97757`) to the Tailwind palette. The AI section is the one
+  place the page steps off teal/violet, so the tooling it is about is recognisable at a glance.
+- **Rebuilt Get in touch.** The heading spans the full width instead of sharing a column with the
+  form, and the mixed bag of pill chips became one list of equal-height channel rows (email leads,
+  then each configured social with its handle read out of the URL).
+- **Rebuilt the contact form.** Focus state moved from a `focusedField` in React state — animated by
+  Framer across `borderColor`, `backgroundColor` and `boxShadow` — to `:focus-within` in CSS
+  (`.field`). Real `<label>`s replaced the `aria-label`-only inputs.
+- **Removed two forever-running animations**: the sweep on the submit button and the sweep on the
+  hero CTA each kept a Framer loop alive for the life of the page, off-screen included. The hero
+  scroll-arrow bounce is now full-tier only.
+- **Other phone work**: dropped `text-rendering: optimizeLegibility` from `body` (full kerning and
+  ligature shaping across a document this long), added `touch-action: manipulation` to tappable
+  elements (the ~300ms Android tap delay), and turned off the full-viewport grain overlay on `lite`
+  — it exists to stop banding on large monitors and was a composited layer over every scrolling
+  pixel.
+- **Navbar breakpoint moved to `lg`** — see above.
+- Large surfaces (`Panel`, project cards, `ClaudeTerminal`, the screenshot card, the form) settled
+  on a 24px radius; tiles and chips stay at 16px.
+
+**Session 6 — no motion on phones, a cleaner hero, a quieter hover, and the performance work**
+
+Lighthouse mobile (local preview, simulated throttling) went **68 → 99**:
+
+| | before | after |
+|---|---|---|
+| performance | 68 | 99 |
+| first contentful paint | 2.1 s | 1.7 s |
+| largest contentful paint | 5.0 s | 1.7 s |
+| total blocking time | 380 ms | 40 ms |
+| speed index | 4.3 s | 1.7 s |
+| time to interactive | 5.0 s | 2.2 s |
+
+- **`lite` now means no animation whatsoever** — see *Motion tiers* above for the mechanism and
+  the reasoning. LCP was the headline story: the hero headline started at `opacity: 0` behind a
+  staggered entrance, which is why largest-contentful-paint was 5 seconds.
+- **Deferred the playground widgets** behind `useNearViewport`, and **made the font stylesheet
+  non-blocking**. A phone's first load is now 4 requests: HTML, CSS (10 kB), `index` (70 kB) and
+  `motion-vendor` (43 kB). Neither `Hero3D` (226 kB) nor the playground chunks are fetched.
+- **`content-visibility: auto`** on every off-screen section on `lite`.
+- **Rebuilt the hero's 3D.** Was a shell, a counter-rotating inner wireframe, a solid centre, a
+  halo, 380 drifting particles and three coplanar rings — six things moving at six speeds with no
+  focal point. Now: one lattice with lit vertices, a glowing heart, and two rings at different
+  tilts each carrying its own satellite. The halo and heart are **sprites with a radial-gradient
+  texture**, not spheres — an unlit sphere has one colour at every pixel, so no amount of opacity
+  or additive blending stops it reading as a flat grey disc, which is exactly how the old ones
+  looked.
+- **Replaced the hover treatment** — see *Hover is a hairline* above.
+- **Copy**: the AI section is now three years with AI, all three with Claude, says Claude is one
+  of the best models available, and credits the engineers at Anthropic who built it.
+- **Fixed a pre-existing collision**: the left scroll rail is `fixed left-6` while the content is
+  centred in a 1280px container, so between 1024px and ~1500px its expanded labels ran into the
+  headline. It is `2xl:flex` now.
+
 ### Fully operational
 
 Typecheck, lint and build are all clean. Verified in a real browser: all 41 skill cards render, all
@@ -331,6 +439,39 @@ and the service-worker deploy regression test passes.
 Verified again after session 3: 20 skill cards collapsed / 41 expanded, 5 "Show more" toggles,
 2 social links rendered (GitHub + LinkedIn — the rest are still placeholders), 13 panels, no
 duplicate IDs, no dead anchors, no horizontal overflow. The Code Playground runs and prints output.
+
+Verified after session 6, in a real browser. Note the automation workaround that finally made
+animated content inspectable: the driven tab reports `visibilityState: 'hidden'`, which pauses
+rAF, so Framer and the R3F render loop freeze part-way through and screenshots catch entrances
+mid-flight. Re-serving `index.html` into a same-origin iframe with a `<base href="/">` and a
+`requestAnimationFrame` backed by `setTimeout` injected ahead of the app's own scripts makes the
+page run normally, and sizing that iframe picks the tier. That is how both the full-tier hero and
+the 390px layout below were actually seen rather than inferred.
+
+At the full tier: the new hero renders as intended (lattice, glowing core, two crossed orbits with
+satellites), headline entrances complete, and the projects hover shows the hairline ring with no
+radial pool — `::after` computes to `background-image: none` and `340px circle` appears zero times
+in the built CSS.
+
+At 390px: `data-motion="lite"`, **zero canvases**, headline transforms `none` and opacity 1 with no
+entrance, the grain overlay `display: none`, `content-visibility: auto` on all six non-hero
+sections plus the footer, and exactly **two** running CSS animations — both the `animate-spin`
+loaders in the deferred playground skeletons. The AI copy reads three years / one of the best /
+respect for the Anthropic engineers.
+
+Verified after session 5, in a real browser: no console output, sections in order with indices
+01–07 and no gaps, no duplicate IDs, no dead anchors, `scrollWidth === clientWidth`, the CLI image
+loads, all three form labels resolve to real inputs, and the scroll rail lists all seven sections.
+The phone layout was checked by rendering the built site in a 390px same-origin iframe, which gets
+its own viewport for media queries — `data-motion` resolves to `lite`, the grain overlay computes
+to `display: none`, the AI stats sit 2-up, the principle cards stack full-width, and all three
+contact rows stay exactly 68px (the email fits on one line rather than truncating).
+
+Note the automation caveat from session 4 still holds and now has a workaround: the driven tab
+reports `visibilityState: 'hidden'`, which throttles rAF, so Framer freezes mid-stagger and
+screenshots catch entrances part-way. Injecting
+`*{opacity:1!important;transform:none!important;filter:none!important}` shows the settled layout.
+`resize_window` still does not change the rendered viewport — hence the iframe.
 
 Verified again after session 4, in a real browser at the full tier: no console output of any
 kind, no duplicate IDs, no dead anchors, `scrollWidth === clientWidth` (no horizontal overflow),

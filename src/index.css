@@ -34,7 +34,10 @@
 
   body {
     background-color: #09090b;
-    text-rendering: optimizeLegibility;
+    /* `text-rendering: optimizeLegibility` used to sit here. It asks the
+       browser to run full kerning and ligature shaping over every text node
+       on the page, which on a phone is paid during the first layout of a
+       document this long. The default is the right trade for body copy. */
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     /* Never let a stray wide child create a horizontal scrollbar on phones. */
@@ -144,6 +147,9 @@
   textarea,
   select {
     -webkit-tap-highlight-color: transparent;
+    /* Opts out of double-tap-to-zoom, which is what makes some Android
+       browsers hold a tap for ~300ms before firing it. */
+    touch-action: manipulation;
   }
 
   /* Inputs at <16px make iOS Safari zoom the whole page on focus. */
@@ -334,42 +340,37 @@
     margin-bottom: -0.14em;
   }
 
-  /* Surfaces that respond to the cursor. `useTilt` writes only the four custom
-     properties; everything visual is decided here.
+  /* Surfaces that respond to the cursor.
 
-     Two flavours, and the difference matters. `.tilt-glow` moves a highlight
-     under the pointer and nothing else, so it is safe on an element Framer
-     Motion is animating. `.tilt-surface` also tips the card, which means it
-     owns `transform` — put it on an element Framer is not touching, or the
-     inline transform Framer writes will silently win. */
+     These used to carry a 340px radial highlight that followed the pointer
+     around the card — a soft circular pool of light that faded in on hover.
+     It was too heavy: it read as a spotlight sitting on top of the design
+     rather than as the card reacting, and it meant `useTilt` writing two
+     pointer coordinates onto the element on every frame of every hover.
+
+     What replaced it is a hairline: on hover the card's edge picks up a thin
+     accent ring and its top highlight brightens a little. No pool of light, no
+     per-frame custom properties — one `box-shadow` transition the compositor
+     handles on its own.
+
+     Two flavours, and the difference still matters. `.tilt-glow` changes only
+     the edge, so it is safe on an element Framer Motion is animating.
+     `.tilt-surface` also tips the card, which means it owns `transform` — put
+     it on an element Framer is not touching, or the inline transform Framer
+     writes will silently win. */
   .tilt-glow,
   .tilt-surface {
     --rx: 0deg;
     --ry: 0deg;
-    --px: 50%;
-    --py: 50%;
     position: relative;
+    transition: box-shadow 0.35s ease;
   }
 
   .tilt-surface {
     --lift: 0px;
-    transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
-  }
-
-  .tilt-glow::after,
-  .tilt-surface::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    pointer-events: none;
-    opacity: 0;
-    transition: opacity 0.35s ease;
-    background: radial-gradient(
-      340px circle at var(--px) var(--py),
-      rgba(255, 255, 255, 0.085),
-      transparent 62%
-    );
+    transition:
+      transform 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+      box-shadow 0.35s ease;
   }
 
   /* A specular streak that crosses the card once on hover — glass catching
@@ -405,20 +406,141 @@
     --brand: #5eead4;
   }
 
+  /* Was a radial wash of the brand colour blooming up behind the whole card.
+     It is now a hairline along the top edge in the same colour — the card
+     still identifies itself as React blue or Ubuntu orange, without a coloured
+     cloud appearing under the text. */
   .skill-card::before {
     content: '';
     position: absolute;
-    inset: -1px;
-    border-radius: inherit;
-    background: radial-gradient(120% 100% at 50% 0%, var(--brand), transparent 62%);
+    inset-inline: 0;
+    top: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--brand), transparent);
     opacity: 0;
     transition: opacity 0.35s ease;
     pointer-events: none;
-    mix-blend-mode: soft-light;
   }
 
   .skill-card:hover::before,
   .skill-card:focus-within::before {
+    opacity: 0.85;
+  }
+
+  /* The AI section's warm wash. Two static radial gradients on one promoted
+     layer, not a stack of blurred divs — a 300px blur radius is the single
+     most expensive filter a phone can be handed, and this reads identically. */
+  .ai-ambient {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background-image:
+      radial-gradient(58% 44% at 16% 10%, rgba(217, 119, 87, 0.13), transparent 72%),
+      radial-gradient(52% 48% at 88% 82%, rgba(217, 119, 87, 0.08), transparent 72%);
+    transform: translateZ(0);
+  }
+
+  /* Form field.
+
+     The contact inputs used to drive their focus state through React: a
+     `focusedField` string in state, animated by Framer across `borderColor`,
+     `backgroundColor` and `boxShadow`. That is a component re-render and a
+     JS-driven repaint for something `:focus-within` already describes, so it
+     now lives entirely in CSS. */
+  .field {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    border-radius: 0.875rem;
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    background: rgba(255, 255, 255, 0.03);
+    padding-inline: 0.95rem;
+    transition:
+      border-color 0.25s ease,
+      background-color 0.25s ease,
+      box-shadow 0.25s ease;
+  }
+
+  /* A textarea's icon belongs on the first line, not floating at its centre. */
+  .field-start {
+    align-items: flex-start;
+  }
+
+  .field:focus-within {
+    border-color: rgba(94, 234, 212, 0.45);
+    background: rgba(255, 255, 255, 0.05);
+    box-shadow: 0 0 0 3px rgba(94, 234, 212, 0.1);
+  }
+
+  .field > svg {
+    flex-shrink: 0;
+    color: #48556a;
+    transition: color 0.25s ease;
+  }
+
+  .field-start > svg {
+    margin-top: 1rem;
+  }
+
+  .field:focus-within > svg {
+    color: #5eead4;
+  }
+
+  .field input,
+  .field textarea {
+    flex: 1 1 auto;
+    min-width: 0;
+    border: 0;
+    background: transparent;
+    padding-block: 0.85rem;
+    color: #e6edf3;
+    /* The field's own ring is the focus affordance; a second outline inside it
+       just draws a box around a box. */
+    outline: none;
+  }
+
+  .field input::placeholder,
+  .field textarea::placeholder {
+    color: rgba(124, 139, 156, 0.55);
+  }
+
+  .field textarea {
+    resize: none;
+  }
+
+  /* Primary action button. The gradient is static: the old one ran a Framer
+     sweep on `repeat: Infinity`, which kept a repaint scheduled for the life
+     of the page — including the whole time the footer was off-screen. */
+  .btn-primary {
+    position: relative;
+    display: inline-flex;
+    min-height: 52px;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: 0.875rem;
+    background-image: linear-gradient(120deg, #99f6e4, #5eead4 45%, #a78bfa);
+    color: #09090b;
+    font-weight: 600;
+    transition:
+      box-shadow 0.25s ease,
+      filter 0.25s ease,
+      transform 0.15s ease;
+  }
+
+  .btn-primary:hover:not(:disabled) {
+    box-shadow: 0 14px 36px -14px rgba(94, 234, 212, 0.6);
+    filter: brightness(1.06);
+  }
+
+  .btn-primary:active:not(:disabled) {
+    transform: translateY(1px);
+  }
+
+  .btn-primary:disabled {
+    cursor: not-allowed;
     opacity: 0.55;
   }
 
@@ -496,9 +618,13 @@
     --lift: -6px;
   }
 
-  .tilt-glow:hover::after,
-  .tilt-surface:hover::after {
-    opacity: 1;
+  /* The subtle hover: a 1px accent ring and a slightly stronger lit edge. */
+  .tilt-glow:hover,
+  .tilt-surface:hover {
+    box-shadow:
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.12),
+      0 0 0 1px rgba(94, 234, 212, 0.2),
+      0 14px 34px -20px rgba(0, 0, 0, 0.75);
   }
 
   .card-sheen:hover::before {
@@ -523,14 +649,64 @@ html[data-motion='lite'] .text-sheen {
   animation: none;
 }
 
+/* The grain is a full-viewport layer stacked above every scrolling pixel, so
+   the compositor blends it on each frame for the whole page. It exists to stop
+   banding on large flat darks — which is a desktop-monitor problem. Phones
+   drop it entirely. */
+html[data-motion='lite'] body::after {
+  display: none;
+}
+
 html[data-motion='lite'] .tilt-surface {
   transform: none;
 }
 
-html[data-motion='lite'] .tilt-glow::after,
-html[data-motion='lite'] .tilt-surface::after,
 html[data-motion='lite'] .card-sheen::before {
   display: none;
+}
+
+/* ---------------------------------------------------------------------------
+   Lite tier, continued: no animation at all.
+
+   The JS vocabulary in `src/lib/motion.ts` goes inert on this tier, and this
+   is the other half of the same decision — the CSS keyframes that were still
+   running regardless: the pinging availability dots, the blinking cursors, the
+   spinning fallback rings, the shimmer on a skeleton. Each one keeps a phone's
+   compositor awake for decoration nobody asked for.
+
+   `.animate-spin` is exempt because it is the only one that carries meaning:
+   it says a lazy chunk is still loading.
+--------------------------------------------------------------------------- */
+html[data-motion='lite'] *,
+html[data-motion='lite'] *::before,
+html[data-motion='lite'] *::after {
+  animation: none !important;
+}
+
+html[data-motion='lite'] .animate-spin {
+  animation: spin 1s linear infinite !important;
+}
+
+/* Skip layout, style and paint for sections that are nowhere near the
+   viewport. On a page this long that is most of them at any moment, and it is
+   the single largest rendering win available on a phone.
+   
+   `auto` in `contain-intrinsic-size` means "remember the real height once you
+   have measured it", which is what stops the scrollbar jumping around as the
+   reader moves down the page. The hero is excluded — it is the first paint. */
+html[data-motion='lite'] main > section:not(#top),
+html[data-motion='lite'] main > div > section:not(#top),
+html[data-motion='lite'] footer[id] {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 900px;
+}
+
+/* `content-visibility` implies paint containment, which clips to the border
+   box — and the seam bloom is drawn 70px above its section's top edge. Tucked
+   inside, it survives the clip. */
+html[data-motion='lite'] .section-rule::after {
+  top: 0;
+  height: 90px;
 }
 
 @keyframes cyber-shimmer {

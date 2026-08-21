@@ -87,10 +87,12 @@ export function useMagnetic<T extends HTMLElement>(strength = 0.3) {
  * Card tilt plus a light that tracks the cursor across the surface.
  *
  * The hook only writes custom properties — `--rx`/`--ry` for the rotation and
- * `--px`/`--py` for the highlight position. The stylesheet decides what to do
- * with them (`.tilt-surface` in index.css), which keeps the transform out of
- * JavaScript's hands and lets the same hook drive a card that wants only the
- * highlight and no rotation at all.
+ * The stylesheet decides what to do with them (`.tilt-surface` in index.css),
+ * which keeps the transform out of JavaScript's hands.
+ *
+ * It used to also write `--px`/`--py` so a radial highlight could follow the
+ * pointer across the card. That highlight is gone — hover is a hairline ring
+ * now — so the hook writes two rotations and nothing else.
  *
  * Attach it to an element Framer Motion is not animating. Framer writes an
  * inline `transform`, and an inline transform beats anything a class can say.
@@ -110,8 +112,6 @@ export function useTilt<T extends HTMLElement>(maxDegrees = 6) {
       frame = 0
       if (!pending) return
       const { x, y } = pending
-      element.style.setProperty('--px', `${(x * 100).toFixed(1)}%`)
-      element.style.setProperty('--py', `${(y * 100).toFixed(1)}%`)
       element.style.setProperty('--ry', `${((x - 0.5) * 2 * maxDegrees).toFixed(2)}deg`)
       element.style.setProperty('--rx', `${((0.5 - y) * 2 * maxDegrees).toFixed(2)}deg`)
     }

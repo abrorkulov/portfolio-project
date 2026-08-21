@@ -5,6 +5,11 @@ export default {
   darkMode: 'class',
   theme: {
     extend: {
+      // Small phones (iPhone SE, older Androids) are 360-375px wide; `xs` is
+      // the hook for the handful of places a 2-up grid has to drop to 1-up.
+      screens: {
+        xs: '420px',
+      },
       colors: {
         void: {
           DEFAULT: '#09090b',
@@ -23,6 +28,14 @@ export default {
         },
         ember: {
           DEFAULT: '#FDBA74',
+        },
+        // Anthropic's warm accent. The AI section is the one part of the page
+        // that steps off the teal/violet palette, so the tooling it is about
+        // is recognisable at a glance.
+        claude: {
+          DEFAULT: '#D97757',
+          dim: '#C2603F',
+          bright: '#E9A184',
         },
         ink: {
           DEFAULT: '#E6EDF3',

@@ -32,7 +32,7 @@ export default function Panel({
 }: PanelProps) {
   return (
     <div
-      className={`glass-card glow-border overflow-hidden rounded-2xl p-4 sm:p-6 ${className}`}
+      className={`glass-card glow-border overflow-hidden rounded-3xl p-4 sm:p-6 ${className}`}
     >
       <div className="mb-4 flex flex-col gap-3 sm:mb-5 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-center gap-3">

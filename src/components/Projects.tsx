@@ -30,7 +30,7 @@ export default function Projects() {
     >
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <SectionHeader
-          index="05"
+          index="06"
           eyebrow="projects"
           title="Things I've built"
           description="A mix of shipped web apps and ongoing systems research."
@@ -80,7 +80,7 @@ function ProjectCard({ project, index }: { project: Project; index: number }) {
     <motion.article variants={driftIn} className="h-full">
       <div
         ref={tiltRef}
-        className="glass-card card-sheen tilt-surface group flex h-full flex-col rounded-2xl p-5 transition-colors duration-300 hover:border-white/20 sm:p-6"
+        className="glass-card card-sheen tilt-surface group flex h-full flex-col rounded-3xl p-5 transition-colors duration-300 hover:border-white/20 sm:p-6"
       >
         {/* Accent rail across the top edge. It draws itself out on hover,
             scaling from the left so it stays on the compositor. */}

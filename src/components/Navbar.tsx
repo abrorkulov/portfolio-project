@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ease, spring } from '../lib/motion'
+import { ease, isLiteMotion, spring } from '../lib/motion'
 import { useScrollSpy, useScrolledPast } from '../lib/useScrollSpy'
 import { useMagnetic } from '../lib/pointerFx'
 import { Code2, Menu, X } from 'lucide-react'
@@ -9,6 +9,7 @@ const links = [
   { href: '#about', id: 'about', label: 'about' },
   { href: '#trajectory', id: 'trajectory', label: 'journey' },
   { href: '#skills', id: 'skills', label: 'skills' },
+  { href: '#ai', id: 'ai', label: 'ai' },
   { href: '#playground', id: 'playground', label: 'playground' },
   { href: '#projects', id: 'projects', label: 'projects' },
 ]
@@ -62,7 +63,7 @@ export default function Navbar() {
 
   return (
     <motion.header
-      initial={{ y: -40, opacity: 0 }}
+      initial={isLiteMotion ? false : { y: -40, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.7, ease: ease.out }}
       className={
@@ -94,7 +95,7 @@ export default function Navbar() {
 
         {/* Desktop links. The active state is a pill that slides between items
             rather than five independent highlights flicking on and off. */}
-        <ul className="hidden items-center gap-1 font-mono text-xs uppercase tracking-wider text-ink-muted md:flex">
+        <ul className="hidden items-center gap-1 font-mono text-xs uppercase tracking-wider text-ink-muted lg:flex">
           {links.map((link) => {
             const isActive = activeSection === link.id
             return (
@@ -104,7 +105,7 @@ export default function Navbar() {
                   onClick={(e) => handleNavClick(e, link.href)}
                   aria-current={isActive ? 'page' : undefined}
                   className={
-                    'relative block rounded-full px-3.5 py-2 transition-colors duration-300 focus:outline-none focus:ring-1 focus:ring-signal ' +
+                    'relative block rounded-full px-3 py-2 transition-colors duration-300 focus:outline-none focus:ring-1 focus:ring-signal ' +
                     (isActive ? 'text-signal' : 'hover:text-ink')
                   }
                 >
@@ -137,7 +138,7 @@ export default function Navbar() {
           {/* Mobile Menu Button */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="grid h-11 w-11 place-items-center rounded-xl text-ink-muted transition-colors hover:bg-white/10 hover:text-ink md:hidden"
+            className="grid h-11 w-11 place-items-center rounded-xl text-ink-muted transition-colors hover:bg-white/10 hover:text-ink lg:hidden"
             aria-label={
               mobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'
             }
@@ -147,10 +148,10 @@ export default function Navbar() {
             <AnimatePresence mode="wait" initial={false}>
               <motion.span
                 key={mobileMenuOpen ? 'close' : 'open'}
-                initial={{ opacity: 0, rotate: -90 }}
+                initial={isLiteMotion ? false : { opacity: 0, rotate: -90 }}
                 animate={{ opacity: 1, rotate: 0 }}
-                exit={{ opacity: 0, rotate: 90 }}
-                transition={{ duration: 0.18, ease: ease.out }}
+                exit={isLiteMotion ? undefined : { opacity: 0, rotate: 90 }}
+                transition={{ duration: isLiteMotion ? 0 : 0.18, ease: ease.out }}
                 className="grid place-items-center"
               >
                 {mobileMenuOpen ? (
@@ -169,19 +170,23 @@ export default function Navbar() {
         {mobileMenuOpen && (
           <motion.div
             id="mobile-menu"
-            initial={{ opacity: 0, height: 0 }}
+            // Animating `height: auto` relayouts the drawer on every frame.
+            // The full tier can afford it for 300ms on a deliberate tap;
+            // touch devices get the panel immediately.
+            initial={isLiteMotion ? false : { opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.3, ease: ease.out }}
-            className="overflow-hidden border-b border-white/10 bg-void/95 md:hidden"
+            exit={isLiteMotion ? undefined : { opacity: 0, height: 0 }}
+            transition={{ duration: isLiteMotion ? 0 : 0.3, ease: ease.out }}
+            className="overflow-hidden border-b border-white/10 bg-void/95 lg:hidden"
           >
             <motion.ul
               initial="hidden"
               animate="show"
-              variants={{
-                hidden: {},
-                show: { transition: { staggerChildren: 0.04 } },
-              }}
+              variants={
+                isLiteMotion
+                  ? { hidden: {}, show: {} }
+                  : { hidden: {}, show: { transition: { staggerChildren: 0.04 } } }
+              }
               className="flex flex-col gap-1 px-4 py-4 font-mono text-sm uppercase tracking-wider"
             >
               {links.map((link, i) => {
@@ -189,10 +194,11 @@ export default function Navbar() {
                 return (
                   <motion.li
                     key={link.href}
-                    variants={{
-                      hidden: { opacity: 0, x: -12 },
-                      show: { opacity: 1, x: 0 },
-                    }}
+                    variants={
+                      isLiteMotion
+                        ? { hidden: {}, show: {} }
+                        : { hidden: { opacity: 0, x: -12 }, show: { opacity: 1, x: 0 } }
+                    }
                   >
                     <a
                       href={link.href}
@@ -214,10 +220,11 @@ export default function Navbar() {
                 )
               })}
               <motion.li
-                variants={{
-                  hidden: { opacity: 0, x: -12 },
-                  show: { opacity: 1, x: 0 },
-                }}
+                variants={
+                  isLiteMotion
+                    ? { hidden: {}, show: {} }
+                    : { hidden: { opacity: 0, x: -12 }, show: { opacity: 1, x: 0 } }
+                }
                 className="mt-2"
               >
                 <a

@@ -9,7 +9,7 @@ import {
   TerminalSquare,
 } from 'lucide-react'
 import Panel from './Panel'
-import { ease } from '../lib/motion'
+import { ease, isLiteMotion } from '../lib/motion'
 
 const defaultCode = `// Try some JavaScript!
 const greeting = "Hello, World!";
@@ -191,11 +191,11 @@ export default function CodePlayground() {
                 {output.map((line, i) => (
                   <motion.p
                     key={`${i}-${line.text.slice(0, 24)}`}
-                    initial={{ opacity: 0, x: -6 }}
+                    initial={isLiteMotion ? false : { opacity: 0, x: -6 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{
-                      duration: 0.2,
-                      delay: i * 0.03,
+                      duration: isLiteMotion ? 0 : 0.2,
+                      delay: isLiteMotion ? 0 : i * 0.03,
                       ease: ease.out,
                     }}
                     className={

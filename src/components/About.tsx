@@ -143,16 +143,13 @@ export default function About() {
 
 /**
  * `.tilt-glow` rather than `.tilt-surface`: this element is a Framer child, so
- * it cannot also own `transform`. It gets the pointer highlight without the
- * rotation — and the dt/dd stay one div deep inside the dl, which they would
- * not if the tilt needed a wrapper of its own.
+ * it cannot also own `transform`. It gets the edge treatment on hover without
+ * the rotation — and the dt/dd stay one div deep inside the dl, which they
+ * would not if a tilt needed a wrapper of its own.
  */
 function FactTile({ icon: Icon, label, value }: (typeof facts)[number]) {
-  const tiltRef = useTilt<HTMLDivElement>()
-
   return (
     <motion.div
-      ref={tiltRef}
       variants={scaleIn}
       className="glass-card tilt-glow rounded-2xl p-4 transition-colors duration-300 hover:border-signal/25 sm:p-5"
     >

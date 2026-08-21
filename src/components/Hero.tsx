@@ -6,22 +6,29 @@ import { useMotionProfile } from '../lib/useMotionProfile'
 import { useMagnetic } from '../lib/pointerFx'
 import { profile } from '../data/content'
 import { ArrowDown, Sparkles, Zap } from 'lucide-react'
-import { ease, lineReveal, staggerParent } from '../lib/motion'
+import { ease, isLiteMotion, lineReveal, staggerParent } from '../lib/motion'
 
 // Three.js is ~226 kB gzipped. Loading it lazily keeps it off the critical
 // path entirely — and phones, where useCanSupport3D declines to render the
 // canvas at all, never fetch it.
 const Hero3D = lazy(() => import('./Hero3D'))
 
-/** Hero copy enters on a slower, more deliberate curve than the rest of the page. */
-const heroItem = {
-  hidden: { opacity: 0, y: 22 },
-  show: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.85, ease: ease.slow },
-  },
-}
+/**
+ * Hero copy enters on a slower, more deliberate curve than the rest of the
+ * page — and on the lite tier it does not enter at all. The headline is the
+ * LCP element on a phone, so starting it at `opacity: 0` would hold the
+ * page's largest paint behind an animation for no reason.
+ */
+const heroItem = isLiteMotion
+  ? { hidden: {}, show: {} }
+  : {
+      hidden: { opacity: 0, y: 22 },
+      show: {
+        opacity: 1,
+        y: 0,
+        transition: { duration: 0.85, ease: ease.slow },
+      },
+    }
 
 /** The three lines of the headline, each with its own gradient treatment. */
 const headline = [
@@ -176,17 +183,19 @@ export default function Hero() {
               href="#projects"
               className="glow-border group relative flex min-h-[44px] items-center overflow-hidden rounded-full border border-signal/30 bg-gradient-to-r from-signal/20 to-pulse/20 px-6 py-3 font-mono text-xs font-medium text-signal transition-colors duration-300 hover:from-signal/30 hover:to-pulse/30 sm:px-8 sm:py-3.5 sm:text-sm"
             >
-              <motion.span
-                aria-hidden="true"
-                className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
-                animate={{ x: ['-100%', '100%'] }}
-                transition={{
-                  duration: 2,
-                  repeat: Infinity,
-                  repeatDelay: 3,
-                  ease: ease.inOut,
-                }}
-              />
+              {!isLiteMotion && (
+                <motion.span
+                  aria-hidden="true"
+                  className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
+                  animate={{ x: ['-100%', '100%'] }}
+                  transition={{
+                    duration: 2,
+                    repeat: Infinity,
+                    repeatDelay: 3,
+                    ease: ease.inOut,
+                  }}
+                />
+              )}
               <span className="relative z-10">View projects</span>
             </MagneticLink>
 
@@ -201,13 +210,13 @@ export default function Hero() {
       </motion.div>
 
       <motion.div
-        initial={{ opacity: 0 }}
+        initial={isLiteMotion ? false : { opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 1.2, duration: 0.8 }}
         className="absolute bottom-8 left-1/2 hidden -translate-x-1/2 flex-col items-center gap-2 sm:bottom-12 sm:flex"
       >
         <motion.div
-          animate={{ y: [0, 8, 0] }}
+          animate={isLiteMotion ? undefined : { y: [0, 8, 0] }}
           transition={{ duration: 2, repeat: Infinity, ease: ease.inOut }}
         >
           <ArrowDown className="h-5 w-5 text-ink-faint" />

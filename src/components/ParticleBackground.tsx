@@ -53,7 +53,8 @@ export default function ParticleBackground() {
 
   useEffect(() => {
     const canvas = canvasRef.current
-    if (!canvas) return
+    // The field does not exist on the lite tier at all — see the return below.
+    if (!canvas || isLite) return
 
     const ctx = canvas.getContext('2d', { alpha: true })
     if (!ctx) return
@@ -263,12 +264,22 @@ export default function ParticleBackground() {
     }
   }, [isLite])
 
+  // Phones get no canvas.
+  //
+  // This used to run a reduced version here — half frame rate, no link pass,
+  // capped DPR — on the theory that a cheap constellation was better than
+  // none. It still meant a full-viewport clear and a few hundred fills every
+  // frame, on the same main thread as the scroll, for a decoration sitting at
+  // 32% opacity behind everything. Removing it outright is the single biggest
+  // thing on this page for phone smoothness, and nobody misses it.
+  if (isLite) return null
+
   return (
     <canvas
       ref={canvasRef}
       aria-hidden="true"
       className="pointer-events-none fixed inset-0 z-0"
-      style={{ opacity: isLite ? 0.32 : 0.45 }}
+      style={{ opacity: 0.45 }}
     />
   )
 }

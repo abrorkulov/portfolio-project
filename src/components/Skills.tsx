@@ -23,8 +23,8 @@ import {
   scaleIn,
   staggerParent,
   hoverOnly,
+  isLiteMotion,
 } from '../lib/motion'
-import { useTilt } from '../lib/pointerFx'
 
 type CategoryStyle = { icon: LucideIcon; accent: string }
 
@@ -187,10 +187,10 @@ export default function Skills() {
             // Keying on the filter lets the whole group cross-fade as one unit,
             // which reads far calmer than 40 cards animating independently.
             key={filter}
-            initial={{ opacity: 0, y: 12 }}
+            initial={isLiteMotion ? false : { opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.35, ease: ease.out }}
+            exit={isLiteMotion ? undefined : { opacity: 0, y: -8 }}
+            transition={{ duration: isLiteMotion ? 0 : 0.35, ease: ease.out }}
             className="space-y-12 sm:space-y-16"
           >
             {visible.map((category) => {
@@ -329,7 +329,6 @@ function SkillCard({
   /** -1 for a preview card; otherwise its position among the revealed ones. */
   revealIndex: number
 }) {
-  const tiltRef = useTilt<HTMLElement>()
 
   // Logos keep the true brand colour; text and bars use a lightened variant
   // so dark marks stay legible on near-black.
@@ -350,7 +349,6 @@ function SkillCard({
 
   return (
     <motion.article
-      ref={tiltRef}
       {...entrance}
       {...hoverOnly({ whileHover: { y: -6 } })}
       className="skill-card tilt-glow group flex h-full flex-col rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4 transition-colors duration-300 hover:border-white/20 sm:p-5"
@@ -395,9 +393,13 @@ function SkillCard({
           className="h-1.5 overflow-hidden rounded-full bg-white/[0.07]"
         >
           <motion.div
-            initial={{ scaleX: 0 }}
+            initial={isLiteMotion ? false : { scaleX: 0 }}
             animate={{ scaleX: level / 100 }}
-            transition={{ duration: 0.9, delay: 0.15, ease: ease.out }}
+            transition={{
+              duration: isLiteMotion ? 0 : 0.9,
+              delay: isLiteMotion ? 0 : 0.15,
+              ease: ease.out,
+            }}
             className="h-full w-full origin-left rounded-full"
             style={{
               background: `linear-gradient(90deg, ${brand}66, ${brand})`,

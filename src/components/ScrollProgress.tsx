@@ -1,11 +1,13 @@
 import { motion, useScroll, useSpring } from 'framer-motion'
 import { ArrowUp, MessageCircle } from 'lucide-react'
 import { useScrollSpy, useScrolledPast } from '../lib/useScrollSpy'
+import { isLiteMotion } from '../lib/motion'
 
 const sections = [
   { id: 'about', label: 'About' },
   { id: 'trajectory', label: 'Journey' },
   { id: 'skills', label: 'Skills' },
+  { id: 'ai', label: 'AI' },
   { id: 'playground', label: 'Playground' },
   { id: 'projects', label: 'Projects' },
   { id: 'contact', label: 'Contact' },
@@ -53,10 +55,14 @@ export default function ScrollProgress() {
           rather than six anonymous dots. */}
       <motion.nav
         aria-label="Section navigation"
-        initial={{ opacity: 0, x: -20 }}
+        initial={isLiteMotion ? false : { opacity: 0, x: -20 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ delay: 1, duration: 0.6 }}
-        className="fixed left-6 top-1/2 z-40 hidden -translate-y-1/2 flex-col gap-1 lg:flex"
+        // Shown only from 2xl. The rail sits at a fixed `left-6`, but the page
+        // content is centred in a 1280px container — so anywhere between 1024
+        // and ~1500px the expanded labels ran straight into the headline. At
+        // 1536px the container's own margin is wider than the rail.
+        className="fixed left-6 top-1/2 z-40 hidden -translate-y-1/2 flex-col gap-1 2xl:flex"
       >
         {sections.map((section) => {
           const isActive = activeSection === section.id
@@ -96,9 +102,9 @@ export default function ScrollProgress() {
       <div className="safe-bottom fixed bottom-5 right-4 z-40 flex flex-col gap-3 sm:bottom-8 sm:right-8">
         {/* Contact button */}
         <motion.button
-          initial={{ opacity: 0, scale: 0 }}
+          initial={isLiteMotion ? false : { opacity: 0, scale: 0 }}
           animate={{ opacity: isVisible ? 1 : 0, scale: isVisible ? 1 : 0 }}
-          transition={{ duration: 0.3, delay: 0.1 }}
+          transition={{ duration: isLiteMotion ? 0 : 0.3, delay: 0.1 }}
           style={{ pointerEvents: isVisible ? 'auto' : 'none' }}
           aria-hidden={!isVisible}
           tabIndex={isVisible ? 0 : -1}
@@ -113,9 +119,9 @@ export default function ScrollProgress() {
 
         {/* Scroll to top button */}
         <motion.button
-          initial={{ opacity: 0, scale: 0 }}
+          initial={isLiteMotion ? false : { opacity: 0, scale: 0 }}
           animate={{ opacity: isVisible ? 1 : 0, scale: isVisible ? 1 : 0 }}
-          transition={{ duration: 0.3 }}
+          transition={{ duration: isLiteMotion ? 0 : 0.3 }}
           style={{ pointerEvents: isVisible ? 'auto' : 'none' }}
           aria-hidden={!isVisible}
           tabIndex={isVisible ? 0 : -1}

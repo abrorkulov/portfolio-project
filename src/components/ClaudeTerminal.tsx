@@ -101,7 +101,7 @@ export default function ClaudeTerminal() {
   return (
     <div
       ref={rootRef}
-      className="glass-card glow-border overflow-hidden rounded-2xl"
+      className="glass-card glow-border overflow-hidden rounded-3xl"
     >
       {/* Window chrome */}
       <div className="flex items-center gap-3 border-b border-white/[0.07] bg-white/[0.02] px-4 py-3">
@@ -144,14 +144,20 @@ export default function ClaudeTerminal() {
           return (
             <motion.div
               key={`${line.text}-${index}`}
-              variants={{
-                hidden: { opacity: isLite ? 0 : 1, y: isLite ? 6 : 0 },
-                show: {
-                  opacity: 1,
-                  y: 0,
-                  transition: { duration: 0.3, ease: ease.out },
-                },
-              }}
+              // Lite reads the finished transcript: no typing, and no
+              // per-line fade either.
+              variants={
+                isLite
+                  ? { hidden: {}, show: {} }
+                  : {
+                      hidden: { opacity: 1, y: 0 },
+                      show: {
+                        opacity: 1,
+                        y: 0,
+                        transition: { duration: 0.3, ease: ease.out },
+                      },
+                    }
+              }
               className={`flex items-start gap-2 ${className}`}
             >
               {Icon && (

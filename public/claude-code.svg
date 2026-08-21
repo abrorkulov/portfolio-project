@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 720" width="1200" height="720" role="img" aria-label="The Claude Code CLI running in a terminal">
+  <defs>
+    <linearGradient id="chrome" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#16161b"/>
+      <stop offset="1" stop-color="#101014"/>
+    </linearGradient>
+    <linearGradient id="glow" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#d97757" stop-opacity="0.16"/>
+      <stop offset="0.55" stop-color="#d97757" stop-opacity="0.03"/>
+      <stop offset="1" stop-color="#d97757" stop-opacity="0"/>
+    </linearGradient>
+    <g id="burst">
+      <g fill="#d97757">
+        <rect x="-1.6" y="-15" width="3.2" height="30" rx="1.6"/>
+        <rect x="-1.6" y="-15" width="3.2" height="30" rx="1.6" transform="rotate(60)"/>
+        <rect x="-1.6" y="-15" width="3.2" height="30" rx="1.6" transform="rotate(120)"/>
+        <rect x="-1.15" y="-10.5" width="2.3" height="21" rx="1.15" transform="rotate(30)"/>
+        <rect x="-1.15" y="-10.5" width="2.3" height="21" rx="1.15" transform="rotate(90)"/>
+        <rect x="-1.15" y="-10.5" width="2.3" height="21" rx="1.15" transform="rotate(150)"/>
+      </g>
+    </g>
+  </defs>
+
+  <style>
+    text { font-family: "JetBrains Mono", "SFMono-Regular", Menlo, Consolas, monospace; }
+    .l  { font-size: 19px; }
+    .dim { fill: #5b6675; }
+    .ink { fill: #dfe6ee; }
+    .ok { fill: #4ade80; }
+    .accent { fill: #d97757; }
+    .sig { fill: #5eead4; }
+  </style>
+
+  <rect width="1200" height="720" rx="22" fill="#0b0b0e"/>
+  <rect width="1200" height="720" rx="22" fill="url(#glow)"/>
+
+  <!-- window chrome -->
+  <path d="M0 22a22 22 0 0 1 22-22h1156a22 22 0 0 1 22 22v34H0Z" fill="url(#chrome)"/>
+  <line x1="0" y1="56" x2="1200" y2="56" stroke="#ffffff" stroke-opacity="0.07"/>
+  <circle cx="30" cy="28" r="6.5" fill="#ff5f57"/>
+  <circle cx="54" cy="28" r="6.5" fill="#febc2e"/>
+  <circle cx="78" cy="28" r="6.5" fill="#28c840"/>
+  <text x="600" y="34" class="dim" font-size="15" text-anchor="middle">claude — ~/portfolio</text>
+
+  <!-- welcome banner -->
+  <rect x="44" y="94" width="1112" height="140" rx="13" fill="#d97757" fill-opacity="0.05" stroke="#d97757" stroke-opacity="0.38"/>
+  <use href="#burst" transform="translate(88 138)"/>
+  <text x="126" y="146" class="ink" font-size="23">Welcome to Claude Code!</text>
+  <text x="126" y="184" class="dim" font-size="16">/help for help, /status for your current setup</text>
+  <text x="126" y="212" class="dim" font-size="16">cwd: ~/portfolio</text>
+
+  <!-- session transcript -->
+  <text x="46"  y="292" class="l sig">&gt;</text>
+  <text x="76"  y="292" class="l ink">preview four skills per category and collapse the rest</text>
+
+  <circle cx="52" cy="337" r="6" class="accent"/>
+  <text x="76"  y="343" class="l ink">Read<tspan class="dim">(src/components/Skills.tsx)</tspan></text>
+  <text x="76"  y="376" class="l dim">└  Read 410 lines</text>
+
+  <circle cx="52" cy="414" r="6" class="accent"/>
+  <text x="76"  y="420" class="l ink">Update<tspan class="dim">(src/components/Skills.tsx)</tspan></text>
+  <text x="76"  y="453" class="l dim">└  Updated with 42 additions and 16 removals</text>
+
+  <circle cx="52" cy="491" r="6" class="accent"/>
+  <text x="76"  y="497" class="l ink">Bash<tspan class="dim">(npm run build)</tspan></text>
+  <text x="76"  y="530" class="l ok">└  ✓ tsc, eslint and vite build all clean — 3.41s</text>
+
+  <!-- prompt -->
+  <rect x="44" y="574" width="1112" height="62" rx="13" fill="#09090b" stroke="#ffffff" stroke-opacity="0.11"/>
+  <text x="74" y="612" class="l dim">&gt;</text>
+  <rect x="100" y="594" width="11" height="24" rx="2" fill="#d97757" fill-opacity="0.9"/>
+  <text x="46" y="678" class="dim" font-size="14">? for shortcuts</text>
+  <text x="1154" y="678" class="dim" font-size="14" text-anchor="end">⏵⏵ accept edits on</text>
+</svg>

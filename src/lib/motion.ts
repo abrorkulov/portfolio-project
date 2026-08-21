@@ -9,12 +9,20 @@ import { getMotionTier } from './useMotionProfile'
  * drifted. Everything now pulls from these tokens, which is what makes the
  * scroll read as one continuous piece.
  *
- * The vocabulary comes in two weights. `full` is the desktop performance:
- * longer travel, blur and clip-path reveals, generous staggers. `lite` is the
- * same choreography with the expensive parts removed — shorter distances, no
- * filter or clip-path animation (both force a repaint per frame, which is what
- * made phones stutter), tighter staggers so a list finishes before the reader
- * has scrolled past it.
+ * The vocabulary comes in two weights, and on the lite tier there is no
+ * vocabulary at all.
+ *
+ * `full` is the desktop performance: longer travel, blur reveals, generous
+ * staggers. `lite` — touch, narrow, low memory, reduced-motion — animates
+ * nothing. Every variant below collapses to an empty pair, so elements mount
+ * in their final state and Framer has no values to drive.
+ *
+ * This started as "the same choreography, cheaper". It wasn't enough: even a
+ * short transform-only entrance means Framer holds an animation for every one
+ * of a few hundred elements, and an element that begins at `opacity: 0` cannot
+ * be the Largest Contentful Paint until its observer has fired and its
+ * animation has run. Turning it off is both smoother and measurably faster to
+ * first paint.
  *
  * The weight is chosen once at import. Variant objects must keep a stable
  * identity for the life of the page — swapping them mid-session restarts every
@@ -22,6 +30,13 @@ import { getMotionTier } from './useMotionProfile'
  * `useMotionProfile()` instead.
  */
 const LITE = getMotionTier() === 'lite'
+
+/**
+ * What every entrance variant becomes on the lite tier: no `hidden` state and
+ * no `show` state, so the element simply renders as authored. Framer still
+ * walks the variant tree, but there is nothing in it to animate.
+ */
+const STILL: Variants = { hidden: {}, show: {} }
 
 /** Custom cubic-beziers. `out` is the workhorse for entrances. */
 export const ease = {
@@ -61,22 +76,22 @@ export const inView = { once: true, amount: LITE ? 0.05 : 0.15 } as const
 export const inViewEarly = { once: true, amount: LITE ? 0.01 : 0.05 } as const
 
 export const duration = {
-  fast: LITE ? 0.2 : 0.25,
-  base: LITE ? 0.36 : 0.5,
-  slow: LITE ? 0.45 : 0.8,
+  fast: 0.25,
+  base: 0.5,
+  slow: 0.8,
   /** Hero-scale entrances only. */
-  cinematic: LITE ? 0.6 : 1.1,
+  cinematic: 1.1,
 } as const
 
-/** Travel distances. Phones move things a short way; desktop can be generous. */
+/** Travel distances, in pixels. Only the full tier moves anything. */
 export const travel = {
-  sm: LITE ? 8 : 14,
-  md: LITE ? 12 : 24,
-  lg: LITE ? 16 : 40,
+  sm: 14,
+  md: 24,
+  lg: 40,
 } as const
 
 /** The standard entrance: rise and fade. */
-export const fadeUp: Variants = {
+export const fadeUp: Variants = LITE ? STILL : {
   hidden: { opacity: 0, y: travel.md },
   show: {
     opacity: 1,
@@ -85,17 +100,14 @@ export const fadeUp: Variants = {
   },
 }
 
-export const fadeIn: Variants = {
+export const fadeIn: Variants = LITE ? STILL : {
   hidden: { opacity: 0 },
   show: { opacity: 1, transition: { duration: duration.base, ease: ease.out } },
 }
 
 /** Slide in from the side — pair with `custom` of -1 (left) or 1 (right). */
-export const slideIn: Variants = {
-  hidden: (direction: number = 1) => ({
-    opacity: 0,
-    x: (LITE ? 14 : 28) * direction,
-  }),
+export const slideIn: Variants = LITE ? STILL : {
+  hidden: (direction: number = 1) => ({ opacity: 0, x: 28 * direction }),
   show: {
     opacity: 1,
     x: 0,
@@ -104,19 +116,16 @@ export const slideIn: Variants = {
 }
 
 /**
- * Rise out of a soft focus. The blur is the whole point of it and it is also
- * the expensive part — animating `filter` repaints the element every frame —
- * so on `lite` it degrades to a plain rise. Reserve it for a handful of
- * elements per page (headlines, section titles), never a grid.
+ * Rise out of a soft focus. Animating `filter` repaints the element every
+ * frame, so reserve it for a handful of elements per page (headlines, section
+ * titles) and never a grid.
  */
-export const blurUp: Variants = {
-  hidden: LITE
-    ? { opacity: 0, y: travel.md }
-    : { opacity: 0, y: travel.lg, filter: 'blur(14px)' },
+export const blurUp: Variants = LITE ? STILL : {
+  hidden: { opacity: 0, y: travel.lg, filter: 'blur(14px)' },
   show: {
     opacity: 1,
     y: 0,
-    ...(LITE ? {} : { filter: 'blur(0px)' }),
+    filter: 'blur(0px)',
     transition: { duration: duration.cinematic, ease: ease.slow },
   },
 }
@@ -125,8 +134,8 @@ export const blurUp: Variants = {
  * A line of type wiped upward from behind its own baseline. Needs a parent
  * with `overflow: hidden` (`.reveal-line` in index.css does this).
  */
-export const lineReveal: Variants = {
-  hidden: { y: LITE ? '60%' : '110%', opacity: LITE ? 0 : 1 },
+export const lineReveal: Variants = LITE ? STILL : {
+  hidden: { y: '110%', opacity: 1 },
   show: {
     y: '0%',
     opacity: 1,
@@ -135,28 +144,19 @@ export const lineReveal: Variants = {
 }
 
 /** Grows into place. Good for tiles, badges and icon chips. */
-export const scaleIn: Variants = {
-  hidden: { opacity: 0, scale: LITE ? 0.97 : 0.9, y: travel.sm },
+export const scaleIn: Variants = LITE ? STILL : {
+  hidden: { opacity: 0, scale: 0.9, y: travel.sm },
   show: {
     opacity: 1,
     scale: 1,
     y: 0,
-    transition: {
-      duration: duration.base,
-      ease: LITE ? ease.out : ease.expressive,
-    },
+    transition: { duration: duration.base, ease: ease.expressive },
   },
 }
 
-/**
- * Cards arriving with a touch of rotation, as though settling onto the page.
- * The tilt is dropped on `lite` — a rotated layer cannot share the compositor
- * fast path with its neighbours and phones show it as a shimmer on the text.
- */
-export const driftIn: Variants = {
-  hidden: LITE
-    ? { opacity: 0, y: travel.md }
-    : { opacity: 0, y: travel.lg, rotate: -1.5, scale: 0.97 },
+/** Cards arriving with a touch of rotation, as though settling onto the page. */
+export const driftIn: Variants = LITE ? STILL : {
+  hidden: { opacity: 0, y: travel.lg, rotate: -1.5, scale: 0.97 },
   show: {
     opacity: 1,
     y: 0,
@@ -171,21 +171,13 @@ export const driftIn: Variants = {
  * `variants={fadeUp}` — no per-item delay arithmetic, which is what made the
  * old staggers drift out of sync when list lengths changed.
  *
- * Staggers are compressed on `lite`. The same 0.09s gap that reads as a
- * cascade across a three-column desktop grid becomes a slow queue down a
- * one-column phone layout, where the last card lands long after the reader
- * has scrolled to it.
+ * On `lite` there is no stagger, because there is no entrance to stagger.
  */
 export function staggerParent(stagger = 0.07, delayChildren = 0): Variants {
-  const scale = LITE ? 0.55 : 1
+  if (LITE) return STILL
   return {
     hidden: {},
-    show: {
-      transition: {
-        staggerChildren: stagger * scale,
-        delayChildren: delayChildren * scale,
-      },
-    },
+    show: { transition: { staggerChildren: stagger, delayChildren } },
   }
 }
 

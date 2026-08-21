@@ -248,13 +248,25 @@ export type SessionLine = {
 
 export const aiPractice = {
   eyebrow: 'ai_toolkit',
-  title: 'A year of building with Claude',
+  title: 'Three years of building with Claude',
   description:
-    'AI is part of how I actually work, not a tab I keep open. This is the whole setup — one tool, in the terminal, checked every time.',
+    'AI is part of how I actually work, not a tab I keep open. Three years in, this is still the whole setup — one model, one tool, in the terminal, checked every time.',
+
+  /**
+   * The still shown beside the copy. It is a drawn depiction of the CLI, not a
+   * capture, so it stays sharp at any size and costs ~4 kB. Dropping a real
+   * screenshot in at the same path swaps it with no code change.
+   */
+  image: {
+    src: '/claude-code.svg',
+    alt: 'The Claude Code CLI in a terminal, reading and editing files in this portfolio repository.',
+    caption: 'Claude Code, running in the same terminal as git and the dev server.',
+  },
 
   paragraphs: [
-    "I have spent the past year learning Claude properly. Not asking it for snippets — learning how to brief it, how much context it needs before it is useful, and how to read what it gives back. Getting good at that took far longer than learning the tool itself.",
-    'Claude is an AI assistant built by Anthropic. What makes it worth the year is that it reads a whole codebase rather than a pasted fragment, follows the conventions a project already has, and explains its reasoning — so I can argue with it instead of copying from it.',
+    'I have been working with AI for three years, and all three of them have been with Claude. Not asking it for snippets — learning how to brief it, how much context it needs before it is useful, and how to read what it gives back. Getting good at that took far longer than learning any tool.',
+    'Claude is an AI assistant built by Anthropic, and in my experience it is one of the best models there is. It reads a whole codebase rather than a pasted fragment, follows the conventions a project already has, and explains its reasoning — so I can argue with it instead of copying from it. Three years on I have not found anything I would rather work with.',
+    'I have a lot of respect for the engineers at Anthropic who built it. Claude Code in particular is a genuinely well-made piece of software, and a good deal of what I know about writing and reviewing code I learned working alongside it.',
   ],
 
   /** The one-line claim the section is built around. */
@@ -262,10 +274,10 @@ export const aiPractice = {
     'I use only Claude Code, and only in the terminal. No chat tab, no editor plugin, nothing pasted between windows.',
 
   stats: [
-    { label: 'working with claude', value: '1 year' },
+    { label: 'working with ai', value: '3 years' },
+    { label: 'all of it with', value: 'Claude' },
     { label: 'the only ai tool', value: 'Claude Code' },
     { label: 'where it runs', value: 'Terminal' },
-    { label: 'pasted from a chat tab', value: 'None' },
   ],
 
   principles: [
@@ -285,7 +297,7 @@ export const aiPractice = {
       icon: 'depth',
       title: 'One tool, learned deeply',
       detail:
-        'A year inside a single tool beat spreading thin across five. I know what it is good at and, more usefully, where it is not.',
+        'Three years inside a single tool beat spreading thin across five. I know what it is good at and, more usefully, where it is not.',
     },
     {
       icon: 'terminal',
