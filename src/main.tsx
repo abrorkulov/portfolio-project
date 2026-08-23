@@ -1,9 +1,8 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import App from './App'
-import './index.css'
-import { initAnalytics } from './lib/analytics'
-import { syncMotionTier } from './lib/useMotionProfile'
+import App from '@/app/App'
+import '@/styles/index.css'
+import { syncMotionTier } from '@/shared/motion/useMotionProfile'
 
 // Stamp the motion tier on <html> before the first render. The stylesheet gates
 // backdrop blur and the animated background on it, so doing this after mount
@@ -22,9 +21,6 @@ if ('serviceWorker' in navigator && import.meta.env.PROD) {
       })
   })
 }
-
-// Initialize Analytics tracking
-initAnalytics()
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
