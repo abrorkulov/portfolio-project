@@ -1,0 +1,273 @@
+import { useEffect, useRef } from 'react'
+import { useMotionProfile } from '@/shared/motion/useMotionProfile'
+import { useFx } from '@/shared/lib/fx'
+
+interface Particle {
+  x: number
+  y: number
+  vx: number
+  vy: number
+  size: number
+  alpha: number
+  color: string
+  pulsePhase: number
+}
+
+const COLORS = [
+  'rgba(94, 234, 212,', // signal
+  'rgba(167, 139, 250,', // pulse
+  'rgba(99, 102, 241,', // indigo
+  'rgba(236, 72, 153,', // pink
+]
+
+const LINK_DISTANCE = 140
+const MOUSE_LINK_DISTANCE = 170
+const MOUSE_FORCE_DISTANCE = 220
+
+/** Squared thresholds: the inner loops compare distances, never need them. */
+const LINK_DISTANCE_SQ = LINK_DISTANCE * LINK_DISTANCE
+const MOUSE_LINK_DISTANCE_SQ = MOUSE_LINK_DISTANCE * MOUSE_LINK_DISTANCE
+const MOUSE_FORCE_DISTANCE_SQ = MOUSE_FORCE_DISTANCE * MOUSE_FORCE_DISTANCE
+
+/**
+ * Ambient constellation canvas.
+ *
+ * Everything mutable — pointer position, particles, the animation handle —
+ * lives in refs. Keeping the pointer out of React state matters: driving it
+ * through `useState` re-ran this effect on every mousemove, which tore down
+ * the loop and re-seeded every particle at a random position dozens of times
+ * a second.
+ *
+ * The field has one setting, because it only exists on one tier. It used to
+ * carry a second, cheaper configuration for phones — half frame rate, no link
+ * pass, fewer particles — but the lite tier now renders no canvas at all, so
+ * every one of those branches was unreachable code describing a mode that
+ * could not run. What is left is the full-tier field: a dense constellation
+ * that links neighbours, reacts to the cursor and draws threads back to it.
+ *
+ * It is also switchable. `useFx` carries the visitor's own ambient-effects
+ * preference from the navbar, and turning it off unmounts the canvas exactly
+ * as the lite tier does.
+ */
+export default function ParticleBackground() {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const { isLite } = useMotionProfile()
+  // The visitor's own switch, from the navbar. A moving background is genuinely
+  // unpleasant for some people to read over, and until this existed the only
+  // way to stop it was an OS-wide reduced-motion setting.
+  const { particles } = useFx()
+
+  const enabled = !isLite && particles
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    // The field does not exist on the lite tier at all — see the return below.
+    if (!canvas || !enabled) return
+
+    const ctx = canvas.getContext('2d', { alpha: true })
+    if (!ctx) return
+
+    const prefersReducedMotion = window.matchMedia(
+      '(prefers-reduced-motion: reduce)',
+    ).matches
+    if (prefersReducedMotion) return
+
+    const particles: Particle[] = []
+    // Pointer starts off-screen so nothing is attracted before the first move.
+    const mouse = { x: -9999, y: -9999 }
+    let width = 0
+    let height = 0
+
+    const seed = () => {
+      // Density scales with area rather than a flat count, so a wide desktop
+      // isn't sparse and a phone isn't crowded — capped at both ends.
+      const area = width * height
+      const count = Math.min(80, Math.round(area / 22000))
+
+      particles.length = 0
+      for (let i = 0; i < count; i++) {
+        particles.push({
+          x: Math.random() * width,
+          y: Math.random() * height,
+          vx: (Math.random() - 0.5) * 0.8,
+          vy: (Math.random() - 0.5) * 0.8,
+          size: Math.random() * 2.5 + 0.5,
+          alpha: Math.random() * 0.5 + 0.2,
+          color: COLORS[Math.floor(Math.random() * COLORS.length)],
+          pulsePhase: Math.random() * Math.PI * 2,
+        })
+      }
+    }
+
+    const resize = () => {
+      const nextWidth = window.innerWidth
+      const nextHeight = window.innerHeight
+      // Only re-seed when the viewport genuinely changes size. Mobile browsers
+      // fire resize as the URL bar collapses, which would otherwise reshuffle
+      // the whole field mid-scroll.
+      const changed =
+        Math.abs(nextWidth - width) > 1 || Math.abs(nextHeight - height) > 80
+
+      width = nextWidth
+      height = nextHeight
+      // A 5K panel at dpr 3 asks the GPU to clear nine times the pixels of a
+      // dpr-1 buffer every frame, for dots nobody is inspecting. 2 is the
+      // point past which the extra resolution stops being visible here.
+      const dpr = Math.min(window.devicePixelRatio || 1, 2)
+
+      canvas.width = Math.floor(width * dpr)
+      canvas.height = Math.floor(height * dpr)
+      canvas.style.width = `${width}px`
+      canvas.style.height = `${height}px`
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+
+      if (changed || particles.length === 0) seed()
+    }
+
+    const handleMouseMove = (event: MouseEvent) => {
+      mouse.x = event.clientX
+      mouse.y = event.clientY
+    }
+
+    const handleMouseLeave = () => {
+      mouse.x = -9999
+      mouse.y = -9999
+    }
+
+    resize()
+    window.addEventListener('resize', resize, { passive: true })
+
+    window.addEventListener('mousemove', handleMouseMove, { passive: true })
+    document.addEventListener('mouseleave', handleMouseLeave)
+
+    let frame = 0
+    let paused = document.hidden
+
+    const handleVisibility = () => {
+      paused = document.hidden
+      if (!paused && !frame) frame = requestAnimationFrame(animate)
+    }
+    document.addEventListener('visibilitychange', handleVisibility)
+
+    function animate() {
+      frame = 0
+      if (!ctx || paused) return
+
+      ctx.clearRect(0, 0, width, height)
+
+      for (const particle of particles) {
+        particle.x += particle.vx
+        particle.y += particle.vy
+
+        if (particle.x < 0 || particle.x > width) particle.vx *= -1
+        if (particle.y < 0 || particle.y > height) particle.vy *= -1
+
+        // Push away from the pointer. Guard the divide so a particle sitting
+        // exactly under the cursor doesn't turn its velocity into NaN.
+        const dx = mouse.x - particle.x
+        const dy = mouse.y - particle.y
+        const distanceSq = dx * dx + dy * dy
+
+        if (distanceSq > 0.000001 && distanceSq < MOUSE_FORCE_DISTANCE_SQ) {
+          const distance = Math.sqrt(distanceSq)
+          const force = (MOUSE_FORCE_DISTANCE - distance) / MOUSE_FORCE_DISTANCE
+          particle.vx -= (dx / distance) * force * 0.6
+          particle.vy -= (dy / distance) * force * 0.6
+        }
+
+        particle.vx *= 0.99
+        particle.vy *= 0.99
+
+        const speedSq = particle.vx * particle.vx + particle.vy * particle.vy
+        if (speedSq < 0.04) {
+          particle.vx += (Math.random() - 0.5) * 0.1
+          particle.vy += (Math.random() - 0.5) * 0.1
+        }
+
+        particle.pulsePhase += 0.05
+        const pulse = (Math.sin(particle.pulsePhase) + 1) / 2
+        const currentAlpha = particle.alpha * (0.5 + pulse * 0.5)
+        const currentSize = particle.size * (0.8 + pulse * 0.4)
+
+        ctx.beginPath()
+        ctx.arc(particle.x, particle.y, currentSize, 0, Math.PI * 2)
+        ctx.fillStyle = `${particle.color} ${currentAlpha})`
+        ctx.fill()
+      }
+
+      // Links between neighbours. Indexed loops avoid allocating a sliced
+      // array per particle on every single frame, and the comparison stays in
+      // squared space so the common case — a pair that is too far apart —
+      // costs no square root at all.
+      ctx.lineWidth = 1
+      for (let i = 0; i < particles.length; i++) {
+        const a = particles[i]
+        for (let j = i + 1; j < particles.length; j++) {
+          const b = particles[j]
+          const dx = a.x - b.x
+          const dy = a.y - b.y
+          const distanceSq = dx * dx + dy * dy
+          if (distanceSq >= LINK_DISTANCE_SQ) continue
+
+          const opacity =
+            0.14 * (1 - Math.sqrt(distanceSq) / LINK_DISTANCE)
+          ctx.beginPath()
+          ctx.moveTo(a.x, a.y)
+          ctx.lineTo(b.x, b.y)
+          ctx.strokeStyle = `${a.color} ${opacity})`
+          ctx.stroke()
+        }
+      }
+
+      // Links to the pointer.
+      if (mouse.x > -9998) {
+        ctx.lineWidth = 0.5
+        for (const particle of particles) {
+          const dx = mouse.x - particle.x
+          const dy = mouse.y - particle.y
+          const distanceSq = dx * dx + dy * dy
+          if (distanceSq >= MOUSE_LINK_DISTANCE_SQ) continue
+
+          const opacity =
+            0.24 * (1 - Math.sqrt(distanceSq) / MOUSE_LINK_DISTANCE)
+          ctx.beginPath()
+          ctx.moveTo(particle.x, particle.y)
+          ctx.lineTo(mouse.x, mouse.y)
+          ctx.strokeStyle = `rgba(94, 234, 212, ${opacity})`
+          ctx.stroke()
+        }
+      }
+
+      frame = requestAnimationFrame(animate)
+    }
+
+    frame = requestAnimationFrame(animate)
+
+    return () => {
+      if (frame) cancelAnimationFrame(frame)
+      window.removeEventListener('resize', resize)
+      window.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseleave', handleMouseLeave)
+      document.removeEventListener('visibilitychange', handleVisibility)
+    }
+  }, [enabled])
+
+  // Phones get no canvas.
+  //
+  // This used to run a reduced version here — half frame rate, no link pass,
+  // capped DPR — on the theory that a cheap constellation was better than
+  // none. It still meant a full-viewport clear and a few hundred fills every
+  // frame, on the same main thread as the scroll, for a decoration sitting at
+  // 32% opacity behind everything. Removing it outright is the single biggest
+  // thing on this page for phone smoothness, and nobody misses it.
+  if (!enabled) return null
+
+  return (
+    <canvas
+      ref={canvasRef}
+      aria-hidden="true"
+      className="pointer-events-none fixed inset-0 z-0"
+      style={{ opacity: 0.45 }}
+    />
+  )
+}

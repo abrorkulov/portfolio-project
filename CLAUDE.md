@@ -1,7 +1,7 @@
 # CLAUDE.md — Signal Portfolio
 
-Personal portfolio for **Jahongir Abrorkulov** (16, Tashkent, Uzbekistan) — Frontend & AI/Systems
-developer. Single-page React site, dark "terminal / systems lab" aesthetic, deployed on Vercel at
+Personal portfolio for **Jahongir Abrorkulov** (16, Tashkent, Uzbekistan) — Full-Stack & AI
+engineer. Single-page React site, dark "terminal / systems lab" aesthetic, deployed on Vercel at
 `abrorkulov.uz`.
 
 ---
@@ -26,68 +26,117 @@ There is **no test suite**. Verification = typecheck + lint + build + loading th
 
 ## Architecture
 
-Vite + React 18 SPA. One page, several `<section>` elements; the navbar scroll-spies between them.
-There is no router — nav links are `#hash` anchors.
+Vite + React 18 SPA. One page, several `<section>` elements; the navbar scroll-spies
+between them. There is no router — nav links are `#hash` anchors.
+
+The tree is **feature-sliced**. A section owns its own directory, and anything two
+sections need lives in `shared/`. Cross-module imports go through the `@/` alias
+(mirrored in `tsconfig.json` and `vite.config.ts`) — relative chains like
+`../../shared/motion/motion` are how a sliced tree quietly turns back into
+spaghetti, because moving a file silently rewrites what its neighbours mean.
 
 ```
 index.html            Meta/SEO/JSON-LD, Google Fonts <link>, favicon, PWA manifest link
-src/main.tsx          Entry. Registers the service worker (PROD only), boots analytics.
-src/App.tsx           Section order + <MotionConfig> + per-section <ErrorBoundary>.
-src/index.css         Tailwind layers + all custom classes (.glass-card, .text-gradient-*, …).
-tailwind.config.ts    Design tokens: void/signal/pulse/ink colours, display/body/mono fonts.
-vite.config.ts        Build config. Read the manualChunks comment before touching it.
+src/main.tsx          Entry. Stamps the motion tier, registers the service worker (PROD only).
+src/app/
+  App.tsx             Section list + <MotionConfig> + per-section <ErrorBoundary>.
+  sections.ts         THE SECTION REGISTRY — read this before adding a section.
+src/features/         One directory per section, plus `chrome/` for page furniture.
+  hero/ about/ journey/ skills/ ai/ playground/ projects/ contact/ chrome/
+src/shared/
+  ui/                 SectionHeader, Panel, PanelSkeleton, TechIcon, ErrorBoundary
+  motion/             motion.ts, useMotionProfile.ts, pointerFx.ts, useGsap.ts
+  hooks/              useScrollSpy.ts, useNearViewport.ts
+  lib/                fx.ts, techMeta.ts, analytics.ts, utils.ts
+src/data/             The data layer (see below).
+src/styles/index.css  Tailwind layers + all custom classes (.glass-card, .text-gradient-*, …).
+tailwind.config.ts    Design tokens: void/signal/pulse/claude/ink colours, display/body/mono fonts.
+vite.config.ts        Build config + the `@` alias. Read the manualChunks comment before touching it.
 public/sw.js          Service worker. Read the fetch-handler comment before touching it.
 ```
 
-### `src/data/content.ts` — the single source of all copy
+### `src/app/sections.ts` — the section registry
 
-Every string, skill, project and timeline entry lives here so components stay presentational.
-**To change site content, edit this file, not the components.** Exports: `profile`,
-`skillCategories`, `trajectory`, `education`, `timelineEvents`, `projects`, `interests`.
+**Adding, removing or reordering a section means editing this file and nothing
+else.** The array order is the page order; the `01`-style indices are derived
+from it, and `navSections` / `railSections` / `spyIds` all fall out of the same
+list. `SectionId` is a closed union, so a typo in a nav link or a scroll-spy id
+is a compile error rather than a dead anchor discovered by a visitor.
 
-### `src/lib/` — shared logic
+This replaced four copies of the same knowledge: the link array in `Navbar`, the
+label array in `ScrollProgress`, a hardcoded `index="03"` string on every
+`SectionHeader`, and a hand-written `07` in the contact footer. Nothing verified
+that they agreed, and they had already drifted once.
+
+`SectionHeader` takes `section="skills"`, not `index="03"`.
+
+### `src/data/` — the data layer
+
+Every string, skill, project and journey step lives here so components stay
+presentational. **To change site content, edit these files, not the components.**
+
+| File | Holds |
+|---|---|
+| `profile.ts` | Name, role, bio, languages, expertise groups, email, socials, education |
+| `skills.ts` | The five categories and their entries |
+| `journey.ts` | The four staircase steps and the technologies picked up at each |
+| `projects.ts` | The six projects |
+| `ai.ts` | The AI section: copy, the two-model split, principles, terminal session |
+| `content.ts` | Barrel. **Import from `@/data/content`** — the split behind it is an implementation detail. |
+
+Technology names are typed as `TechName`, a union derived from the keys of
+`techMeta`. A skill, project stack entry or journey badge naming a technology
+with no brand entry is a **compile error**, not a grey `?` tile found by a
+visitor. Adding a technology means adding it to `techMeta` first — which is also
+where the reminder to verify its CDN slug lives.
+
+Arrays are annotated `readonly T[]` rather than `as const satisfies` — the
+latter narrows to a union of specific tuples that consumers cannot work with.
+The annotation still validates every entry.
+
+### `src/shared/` — cross-cutting code
 
 | File | Role |
 |---|---|
-| `useMotionProfile.ts` | **The motion tier.** Decides `full` vs `lite` once from pointer type, viewport, device memory and reduced-motion; stamps it on `<html data-motion>` before first paint. Read this before touching anything below. |
-| `motion.ts` | **The motion vocabulary.** `ease`, `spring`, `fadeUp`, `blurUp`, `lineReveal`, `scaleIn`, `driftIn`, `staggerParent`, `inView`, `hoverOnly`. Every value is tier-aware. |
-| `pointerFx.ts` | `useMagnetic` (buttons lean toward the cursor) and `useTilt` (card tilt). Full tier only; refs and rAF, never state. |
-| `useNearViewport.ts` | Gate for work that should not happen until the reader is close to it. Holds the playground widgets back so their `lazy()` chunks are not fetched on first render. |
-| `useScrollSpy.ts` | `useScrollSpy` (IntersectionObserver, shared by the navbar and the scroll rail) and `useScrolledPast` (rAF-throttled `scrollY`). |
-| `techMeta.ts` | Brand colour + icon-CDN slug + fallback monogram for all 41 technologies. Also `readableAccent()`. |
-| `useCanSupport3D.ts` | Gates the WebGL hero: ≥1024px, WebGL present, not reduced-motion. |
-| `analytics.ts` | Section-view IntersectionObserver; dispatches a `portfolio_analytics` CustomEvent. No third party. |
-| `utils.ts` | `cn()` class joiner. |
+| `motion/useMotionProfile.ts` | **The motion tier.** Decides `full` vs `lite` once from pointer type, viewport, device memory and reduced-motion; stamps it on `<html data-motion>` before first paint. Read this before touching anything below. |
+| `motion/motion.ts` | **The motion vocabulary.** `ease`, `spring`, `fadeUp`, `blurUp`, `lineReveal`, `scaleIn`, `driftIn`, `staggerParent`, `inView`, `hoverOnly`. Every value is tier-aware. |
+| `motion/pointerFx.ts` | `useMagnetic` (buttons lean toward the cursor) and `useTilt` (card tilt). Full tier only; refs and rAF, never state. |
+| `motion/useGsap.ts` | **GSAP + ScrollTrigger**, behind a dynamic `import()`. Never enters the entry graph and never downloads on `lite`. `useGsapScroll` runs a setup inside a `gsap.context()` scoped to a ref, so one `revert()` on unmount kills every tween, trigger and inline style. |
+| `hooks/useNearViewport.ts` | Gate for work that should not happen until the reader is close to it. Holds the playground widgets back so their `lazy()` chunks are not fetched on first render. |
+| `hooks/useScrollSpy.ts` | `useScrollSpy` (IntersectionObserver, shared by the navbar and the scroll rail) and `useScrolledPast` (rAF-throttled `scrollY`). |
+| `lib/techMeta.ts` | Brand colour + icon-CDN slug + fallback monogram for every technology, and the `TechName` union derived from it. Also `readableAccent()`. |
+| `lib/fx.ts` | The visitor's ambient-effect switches (particles, sound) as a hand-rolled external store, plus the synthesised WebAudio tick. |
+| `lib/analytics.ts` | Section-view IntersectionObserver; dispatches a `portfolio_analytics` CustomEvent. No third party. **Returns a teardown function and must be called from an effect** — see the note in the file. |
+| `lib/utils.ts` | `cn()` class joiner. |
+| `ui/*` | `SectionHeader`, `Panel`, `PanelSkeleton`, `TechIcon`, `ErrorBoundary`. |
 
-### `src/components/` — rendered sections, in page order
+### `src/features/` — sections, in page order
 
-`Navbar` → `Hero` (+`Hero3D`/`Hero3DFallback`) → `About` → `TrainTimeline` → `Skills` →
-`AiPractice` (+`ClaudeTerminal`) →
-playground (`PacketRunner`, `CodePlayground`) → `Projects` → `Footer` (+`ContactForm`).
+`Hero` (+`Hero3D`/`Hero3DFallback`) → `About` → `JourneySection`
+(+`JourneyScene`, `StaircaseStage`) → `SkillsSection` → `AiSection`
+(+`ClaudeTerminal`) → `PlaygroundSection` (+`PacketRunner`, `CodePlayground`) →
+`ProjectsSection` → `ContactSection` (+`ContactForm`).
 
-Cross-cutting: `ParticleBackground` (fixed canvas), `CursorGlow` (full tier only),
-`ScrollProgress` (top bar, side rail, FABs),
-`SectionHeader` (numbered eyebrow/title/description/aside), `Panel` (shared chrome for the
-playground widgets), `ErrorBoundary`, `TechIcon`.
+`features/chrome/` is the page furniture that is not a section:
+`Navbar`, `ScrollProgress`, `FxToggle`, `CursorGlow`, `ParticleBackground`.
 
-Sections are numbered 01–07 via `SectionHeader`'s `index` prop (the footer hand-rolls its own 07).
-Keep them in order if you add or remove a section.
-
-The navbar switches to its drawer at **1024px**, not 768 — six links no longer fit beside the
-brand and the CTA at `md`. That boundary is also where the motion tier flips, so "drawer" and
-"lite" now mean the same set of devices.
-
-**Currently unrendered** (present but not imported by `App.tsx`): `LearningTrajectory`, `Gaming`,
-`DinoGame`, `Cert3DBackground`, `LoadingScreen`. Note `LearningTrajectory` also uses
-`id="trajectory"` — it would collide with `TrainTimeline` if both were mounted.
+The navbar switches to its drawer at **1024px**, not 768 — six links no longer
+fit beside the brand and the CTA at `md`. That boundary is also where the motion
+tier flips, so "drawer" and "lite" now mean the same set of devices.
 
 ---
 
 ## Stack
 
 React 18 · TypeScript 5.6 (strict) · Vite 5 · Tailwind 3.4 · Framer Motion 11 ·
-three + @react-three/fiber + drei · lucide-react · recharts (only used by the unrendered
-`LearningTrajectory`) · ESLint 9 flat config.
+GSAP 3.15 + ScrollTrigger · three + @react-three/fiber + drei · lucide-react ·
+ESLint 9 flat config.
+
+**Framer Motion and GSAP have a division of labour, and it is not negotiable by taste.** Framer
+owns every *entrance* — declarative variants from one shared vocabulary, with an inert `lite`
+tier. GSAP owns *scrubbed* timelines, where scroll position drives a sequence of unrelated
+properties on unrelated elements. There is exactly one of those (the staircase climb). Do not
+reach for GSAP for a fade-in, and do not try to scrub with `whileInView`.
 
 ---
 
@@ -163,7 +212,7 @@ an **inline** `transform` for every variant, and inline beats a class every time
 
 Same rule for `useMagnetic`: its element must be a plain `<a>`, never a `motion.a`.
 
-### Motion — always use `src/lib/motion.ts`
+### Motion — always use `shared/motion/motion.ts`
 
 Do not hand-write durations or easing curves. The pattern is a staggered parent with declarative
 children — no per-item `delay: i * 0.1` arithmetic:
@@ -185,6 +234,58 @@ Three hard-won rules:
 
 `<MotionConfig reducedMotion="user">` in `App.tsx` handles reduced-motion for JS animation; the CSS
 media query alone could never cover Framer.
+
+### The journey (section 02) — a train you drive by scrolling
+
+Five stations, five years. Everything picked up at a station is still aboard at the end
+of the line — that is the section's argument, made by the graphic rather than asserted
+in copy.
+
+| | what it is | when it renders |
+|---|---|---|
+| `TrainScene` | **Real WebGL.** A CatmullRom track with rails and sleepers, five platforms with lit signs, and a locomotive whose position along the curve *is* the reader's scroll position. The camera travels with it. | Full tier **and** WebGL present (`useCanSupport3D`) |
+| `RouteMap` | A transit-style route diagram — the same five stations, still, vertical. No canvas, nothing fetched. | Everywhere else |
+
+`RouteMap` is drawn as a *diagram*, not a shrunken still of the 3D scene, because a small
+static render of a 3D thing always looks like a 3D thing that failed.
+
+**The scroll position lives in a ref, never state.** `progress` is written by a
+ScrollTrigger `onUpdate` and read inside `useFrame`, so driving the train costs zero React
+renders. `active` (which station has been reached) *is* state — it changes about five times
+per section rather than sixty times a second, and both the cards and the platform lights
+need it.
+
+Three things here are easy to get wrong and were all got wrong first:
+
+- **`Matrix4.lookAt` aligns −Z with the target.** The locomotive is modelled nose-forward
+  along +Z, so feeding it the raw curve tangent drove the train backwards along its own
+  route — cab leading, headlight trailing. The tangent is negated for this reason.
+- **The camera lives outside the scaled group.** Aiming it at raw `curve.getPointAt()`
+  coordinates points it at where the train would be at scale 1. Multiply by the same scale.
+- **Emissive is added after lighting.** On a dark material it is not a tint, it is the
+  colour. Platforms at `emissiveIntensity` 0.12 read as glowing green ramps; they sit at
+  ~0.06, and the reached state is carried by the sign and the lamp instead.
+
+The last station is flagged `upcoming: true` in the data and rendered differently —
+amber, dashed leg, "next stop". It is an intention, not history, and nothing in the UI
+may present it as something that already happened.
+
+### Ambient effects the visitor controls (`lib/fx.ts`, `FxToggle`)
+
+Two switches in the navbar, persisted to `localStorage`:
+
+- **particles** — unmounts `ParticleBackground`, `CursorGlow` and `FallingTech`. Some people find
+  a moving background genuinely hard to read over, and the only previous escape was an OS-wide
+  reduced-motion setting. Not rendered on `lite`, which has no particles to switch off.
+- **sound** — a synthesised WebAudio tick on hover/click. **Off by default and it must stay that
+  way**; it plays its own confirmation tick the instant it is enabled, so nobody can turn it on
+  without immediately hearing what they agreed to. No audio files — two oscillators and a gain
+  ramp ship no bytes.
+
+The store is hand-rolled on `useSyncExternalStore` rather than context: the consumers are
+scattered and the value changes almost never, so a provider would re-render the tree to deliver
+two booleans. **`getSnapshot` must return a stable object identity** — a fresh object per read is
+an infinite render loop, not a subtle staleness bug.
 
 ### Shared design pieces
 
@@ -235,6 +336,27 @@ removed over trademark requests) and throttles when ~29 requests fire at once. S
 
 These five are the mobile-jank list. Each one was measured, not guessed.
 
+- **Never give the app wrapper a background.** `body::before` paints the page's entire
+  ambient wash and is a `position: fixed`, `z-index: 0` child of `<body>`. The app wrapper is
+  also a positioned child of `<body>` with `z-index: auto`, so both land in the same paint
+  group and DOM order decides — an opaque `bg-void` on the wrapper covered the wash
+  completely. It was invisible for the life of the page and the background just looked like
+  flat black. The same applies to `class="bg-void"` on `<body>` in `index.html`: a utility
+  class there outranks the stylesheet's base layer. The base colour belongs in `index.css`
+  and nowhere else.
+- **Blurred discs stop working once the background is lit.** The hero and skills sections
+  each had two `blur-3xl` circles as "ambient glow". Against flat black that reads as
+  ambience; against an actual gradient it reads as a grey balloon, because a 96px blur on a
+  384px circle still has a findable edge. Both are radial gradients now — no filter, no
+  extra layer, no edge.
+- **Never `overflow-x: hidden` on an ancestor of a `position: sticky` element — use
+  `overflow-x: clip`.** `hidden` computes `overflow-y: auto`, which makes the element a scroll
+  container, and a sticky descendant then resolves against *that* box instead of the viewport. It
+  does not warn, it does not error: the element simply never sticks. Both `body` and the `App`
+  wrapper (`.clip-x`) had it, which is why the staircase scrolled away with its cards for the
+  first half of session 7. `clip` clips identically without creating a scroll container. Each
+  declaration is written twice — `hidden` then `clip` — so Safari < 16 keeps the old behaviour
+  rather than gaining a horizontal scrollbar. Keep both lines, in that order.
 - **Never `background-attachment: fixed`.** The ambient wash used to sit on `body` that way. A
   fixed background cannot be moved by the compositor, so every scroll frame repainted three
   radial gradients across the whole viewport — the single largest cause of stutter on phones.
@@ -249,9 +371,12 @@ These five are the mobile-jank list. Each one was measured, not guessed.
   `scroll` listener calling `element.offsetTop`, which forces a synchronous layout flush — twice
   per event, mid-scroll. Both now share `useScrollSpy` (IntersectionObserver) and
   `useScrolledPast` (rAF-throttled, reads `scrollY` only).
-- **Never put `three` in `manualChunks`.** Naming it there pulls it into the entry's preload graph —
-  270 kB gzipped on every first paint, including phones where the canvas never renders. `Hero3D` is
-  `lazy()`-imported and Rollup keeps three inside that chunk.
+- **Never put `three` or `gsap` in `manualChunks`.** Naming them there pulls them into the entry's
+  preload graph — 270 kB gzipped on every first paint, including phones where neither ever runs.
+  `Hero3D` is `lazy()`-imported and Rollup keeps three inside that chunk; GSAP is reached only
+  through the dynamic `import()` in `useGsap.ts`, which is also what keeps it off `lite`
+  entirely. Verify after any build change: `grep -c "<gsap chunk name>" dist/index.html` must
+  be 0.
 - **Never drive per-frame values through React state.** `ParticleBackground` and `Hero3D` keep
   pointer position in refs. Putting it in state re-ran the effect on every mousemove and re-seeded
   every particle dozens of times a second.
@@ -430,80 +555,163 @@ Lighthouse mobile (local preview, simulated throttling) went **68 → 99**:
   centred in a 1280px container, so between 1024px and ~1500px its expanded labels ran into the
   headline. It is `2xl:flex` now.
 
+**Session 7 — full-stack repositioning, the staircase, GSAP, and visitor controls**
+
+The brief was an Awwwards-level overhaul: richer motion, GSAP ScrollTrigger, a better 3D scene,
+a "learning journey staircase" with falling elements, and a content rewrite around full-stack +
+AI. The two-tier motion system was kept intact throughout — everything below is full-tier only.
+
+- **Repositioned the site.** "Frontend & AI/Systems Developer" → **Full-Stack & AI Engineer**
+  across the hero, `profile.role`, the page title, OG/Twitter cards and the JSON-LD. The hero
+  headline went from three lines to two, because "Frontend / & AI/Systems / Developer" put a
+  two-word line between two one-word lines and left a hole in the middle of the block.
+- **Rewrote the content.** New stack (TypeScript, Next.js, React Native, Express.js, Prisma,
+  .NET, C++, C#), the proficiencies supplied by Jahongir for databases and tools, and **six real
+  projects** — MaktabHub, adblogger.uz, FarmPlatform, Job-Finder, Sotuv-Sayt, and the systems /
+  reverse-engineering research. The old Typing Speed Test and Utility Toolbelt were removed at
+  his request. Sass and PHP left the skills grid; they are not in the stack he works in now.
+- **Replaced the journey section.** `TrainTimeline` (a vertical rail with a train icon springing
+  along it) became `JourneyStaircase` — see the section above. The train was a decorated list:
+  the graphic carried nothing the cards did not already say.
+- **Added GSAP** for the one thing it is better at than Framer, behind a dynamic import so it
+  costs the entry graph nothing and `lite` never fetches it.
+- **Upgraded `Hero3D`** with `PerformanceMonitor` (resolution is negotiated with the machine
+  rather than assumed — the buffer steps down when frame rate sags, `flipflops={2}` so a machine
+  on the threshold cannot thrash) and **pointer *energy***: the core now swells and spins a
+  little in response to how hard you are moving the mouse, not just where it is. Position alone
+  made it a weathervane.
+- **Added the ambient-effect switches** — particles and interface sound, documented above.
+- **Fixed a real bug that had nothing to do with the new work:** `overflow-x: hidden` on `body`
+  and the app wrapper silently disables `position: sticky` anywhere in the page. See the first
+  entry under *Performance rules*.
+- **Deleted the six dead components** and `recharts` with them, closing next-step 3 from session
+  6, and removed the stray `Снимок экрана` screenshot (next-step 6).
+- **Removed unreachable code in `ParticleBackground`**: it still carried a whole second
+  configuration for the lite tier — half frame rate, no link pass, fewer particles — from before
+  that tier stopped rendering a canvas at all. Every one of those branches was describing a mode
+  that could not run.
+
+**Session 8 — architecture overhaul, a real 3D staircase, and a QA pass**
+
+The brief was a principal-architect pass plus a QA/performance audit, with better design
+for the journey and AI sections.
+
+**Architecture**
+
+- **Feature-sliced `src/`.** `components/` and `lib/` became `app/`, `features/<section>/`,
+  `shared/{ui,motion,hooks,lib}`, `data/` and `styles/`. Every cross-module import now goes
+  through the `@/` alias.
+- **Built `app/sections.ts`**, the section registry — see above. It replaced four
+  independent copies of the page's section list.
+- **Split the data layer** into `profile/skills/journey/projects/ai` behind a barrel, and
+  typed technology names as `TechName` so a name with no brand entry cannot compile.
+- **Closed the open unions**: `ProjectTag`, `JourneyIcon`, `PrincipleIcon`,
+  `SessionLineKind` are unions with exhaustive icon maps, replacing
+  `Record<string, Icon>` lookups with `?? fallback`.
+- **Extracted `PlaygroundSection`** and `PanelSkeleton` out of `App.tsx`, which is now just
+  the section list and the providers.
+
+**Bugs found and fixed**
+
+- **Analytics observed nothing.** `initAnalytics()` was called from `main.tsx` *before*
+  `createRoot().render()`, so `querySelectorAll('section[id]')` ran against an empty
+  `#root` and matched zero elements. It never fired once. It is an effect in `App` now,
+  returns a teardown, and also watches `footer[id]` — which the old selector could never
+  have matched, since the contact section is a `<footer>`.
+- **Framer Motion dev warning**, traced to source rather than guessed: `useScroll({target})`
+  warns when the scroll container is static, and the container for a window-scrolling page
+  is `<html>`. Fixed with `position: relative` on `html`.
+- **Two `.tilt-surface` cards had no `useTilt` ref**, so they paid for the transform stack
+  and got only the hover lift. They own the hook now.
+- **Pruned dead code**: the 2D `FallingTech` canvas (superseded by WebGL), `pointOnTread`,
+  the `SKY` headroom constant, and the unused `aiPractice.image` entry.
+
+**Design**
+
+- **The journey staircase is now genuinely 3D** — see the table above. The 2D isometric
+  drawing could not rotate a cube honestly and nothing cast a shadow on anything.
+- **Rebuilt the AI section around its actual thesis.** The drawn CLI still and the live
+  terminal replay were saying the same thing, and the replay says it far better; the still
+  is gone and the terminal leads. The two-model split is now *shown* as a pipeline —
+  Gemini (planning) → Claude Code (building) — rather than asserted in prose.
+- **Renamed MaktabHub to Maktab AI**, described as an AI platform for private schools.
+
+**Measured, not assumed**
+
+- 0 long tasks and CLS of 0 across a full page walk.
+- The particle field's O(n²) link pass costs **0.25 ms/frame** of a 16.7 ms budget (78
+  particles, 3003 pair checks, ~89 links drawn). A batched-by-colour rewrite measured
+  0.24 ms — no gain, so it was not made.
+- **Real frame rate could not be measured in-harness**: the automation tab is
+  rAF-suspended (0 callbacks in 4 s). ResizeObserver does not deliver there either, which
+  is why R3F canvases sit at 300x150 until a `resize` event is dispatched. Both are
+  automation artefacts, not page bugs — the hero canvas shows the same behaviour.
+
+**Session 9 — the train, the background, and the screenshot that should not have gone**
+
+- **Replaced the staircase with a train.** Jahongir's idea, and a better one: a staircase is
+  a diagram, a train is a story. Five stations on a curved track, the scroll wheel as the
+  throttle, a camera that travels with the locomotive, and platforms that light as they are
+  reached. See the section above for the three things that were got wrong first.
+- **Added a fifth station, flagged `upcoming`.** Forward-looking, rendered in amber with a
+  dashed leg and "next stop". It is new copy and needs approval.
+- **Fixed the background, which had never been visible.** `body::before` was painted over by
+  the app wrapper's opaque `bg-void`. Two rules added to *Performance rules* above. The wash
+  itself was also rebuilt — four large overlapping ellipses plus a vignette instead of three
+  small circles that sat as discrete blobs — and the base colour deepened to `#07080c`.
+- **Restored `claude-code.svg` to the AI section.** An earlier pass deleted it as redundant
+  with the live terminal replay; that conflated two different jobs. It now opens the section
+  full-width as the tool's face, with the replay lower down showing what *using* it looks
+  like. No added window chrome — the drawing has its own, and wrapping it produced two
+  stacked title bars.
+- **Fixed journey copy that was false on phones**: it promised a train to drive in a tier
+  that renders a still diagram.
+
 ### Fully operational
 
-Typecheck, lint and build are all clean. Verified in a real browser: all 41 skill cards render, all
-5 filters work, no console errors, no duplicate IDs, no dead anchor links, no horizontal overflow,
-and the service-worker deploy regression test passes.
+**Verified after session 8**, against the production build at 1920px and in a 390px
+same-origin iframe.
 
-Verified again after session 3: 20 skill cards collapsed / 41 expanded, 5 "Show more" toggles,
-2 social links rendered (GitHub + LinkedIn — the rest are still placeholders), 13 panels, no
-duplicate IDs, no dead anchors, no horizontal overflow. The Code Playground runs and prints output.
+Full tier: **no console warnings and no errors** across a full page walk plus every
+interactive surface (all five skill filters, every "Show more", both FX switches, the
+terminal replay). Sections numbered 01–07 with no gaps — now derived from the registry
+rather than authored — no duplicate ids, no dead anchors, `scrollWidth === clientWidth`.
+The 3D staircase renders with lit treads, teal rim edges and real step-to-step shadows;
+the AI pipeline renders Gemini → Claude Code with both logos resolving. Analytics now
+emits `view_section` events, which it never did before.
 
-Verified after session 6, in a real browser. Note the automation workaround that finally made
-animated content inspectable: the driven tab reports `visibilityState: 'hidden'`, which pauses
-rAF, so Framer and the R3F render loop freeze part-way through and screenshots catch entrances
-mid-flight. Re-serving `index.html` into a same-origin iframe with a `<base href="/">` and a
-`requestAnimationFrame` backed by `setTimeout` injected ahead of the app's own scripts makes the
-page run normally, and sizing that iframe picks the tier. That is how both the full-tier hero and
-the 390px layout below were actually seen rather than inferred.
+Lite tier (390px): `data-motion="lite"`, **zero canvases**, **zero running animations**,
+backdrop blur off, no horizontal overflow, the SVG staircase fully lit — and **neither
+three.js nor GSAP is fetched**. First load is still exactly two JS chunks, entry +
+`motion-vendor`, unchanged by any of this work.
 
-At the full tier: the new hero renders as intended (lattice, glowing core, two crossed orbits with
-satellites), headline entrances complete, and the projects hover shows the hairline ring with no
-radial pool — `::after` computes to `background-image: none` and `340px circle` appears zero times
-in the built CSS.
+Build output: entry ~76 kB gz + `motion-vendor` 43 kB gz + CSS ~10 kB gz on first paint.
+Rollup hoists three.js into one shared chunk (219 kB gz) that `Hero3D` (8 kB gz) and
+`JourneyScene` (2 kB gz) both use — so the second 3D surface on the page cost ~2 kB, not
+another 226. GSAP (28 kB gz) + ScrollTrigger (18 kB gz) load on demand, full tier only.
+None of it is referenced from `index.html`.
 
-At 390px: `data-motion="lite"`, **zero canvases**, headline transforms `none` and opacity 1 with no
-entrance, the grain overlay `display: none`, `content-visibility: auto` on all six non-hero
-sections plus the footer, and exactly **two** running CSS animations — both the `animate-spin`
-loaders in the deferred playground skeletons. The AI copy reads three years / one of the best /
-respect for the Anthropic engineers.
-
-Verified after session 5, in a real browser: no console output, sections in order with indices
-01–07 and no gaps, no duplicate IDs, no dead anchors, `scrollWidth === clientWidth`, the CLI image
-loads, all three form labels resolve to real inputs, and the scroll rail lists all seven sections.
-The phone layout was checked by rendering the built site in a 390px same-origin iframe, which gets
-its own viewport for media queries — `data-motion` resolves to `lite`, the grain overlay computes
-to `display: none`, the AI stats sit 2-up, the principle cards stack full-width, and all three
-contact rows stay exactly 68px (the email fits on one line rather than truncating).
-
-Note the automation caveat from session 4 still holds and now has a workaround: the driven tab
-reports `visibilityState: 'hidden'`, which throttles rAF, so Framer freezes mid-stagger and
-screenshots catch entrances part-way. Injecting
-`*{opacity:1!important;transform:none!important;filter:none!important}` shows the settled layout.
-`resize_window` still does not change the rendered viewport — hence the iframe.
-
-Verified again after session 4, in a real browser at the full tier: no console output of any
-kind, no duplicate IDs, no dead anchors, `scrollWidth === clientWidth` (no horizontal overflow),
-20 collapsed skill cards, 34 tilt surfaces, 9 line-reveal headings. Forcing
-`data-motion="lite"` confirmed the overrides land: opaque card fill, `backdrop-filter: none`,
-background animation off, tilt highlight removed.
-
-Build output: `index` ~68 kB gz + `motion-vendor` 43 kB gz + CSS ~9 kB gz on first paint;
-`Hero3D` 227 kB gz loads lazily and only on ≥1024px WebGL devices.
+Typecheck, lint and build are all clean.
 
 ### Next steps
 
-1. **Verify the new skill entries.** Session 2 added ~21 technologies (Python, SQL, PostgreSQL,
-   MySQL, MongoDB, SQLite, Express, REST APIs, HTML5, CSS3, Sass, GitHub, npm, Bash, Vercel, Figma,
-   Vite, Machine Learning, Networking, Data Structures, Windows Internals) with **assumed**
-   proficiency levels and notes. Jahongir must confirm or prune these — they are currently claims
-   the site makes on his behalf.
-2. **Phone layout and the scroll spy were never visually confirmed.** Browser-window emulation
-   still does not take effect in the automation session, and the automated tab reports
-   `visibilityState: 'hidden'`, which suspends IntersectionObserver callbacks and smooth scrolling
-   — so the `lite` tier and `useScrollSpy` are verified by forcing `data-motion` and by geometry,
-   not by watching them. On a real phone, check: the hero, the nav drawer, the skills filter row,
-   and that scrolling now feels smooth. On any real browser, scroll the page and confirm the navbar
-   pill and the left rail track the section you are looking at.
-3. **Decide on the unrendered components** listed above — wire them in or delete them. Watch the
-   `id="trajectory"` collision.
-4. **Three socials in `content.ts` are still bare placeholders** — `telegram: 'https://t.me/'`,
-   `instagram: 'https://instagram.com/'`, `discord: 'https://discord.com'`. They are filtered out of
-   the footer automatically; fill in the handles and they appear (Discord has no icon mapped yet).
-5. **The contact form has no backend.** It opens the visitor's mail client. If a real inbox
-   submission is wanted, wire up Formspree / Resend / a Vercel function.
-6. **`public/Снимок экрана 2026-07-24 111904.png`** is a stray screenshot that ships to production
-   on every deploy. Delete it unless it is deliberate.
-7. Optional: `Hero3D` at 842 kB raw still trips Vite's chunk-size warning. It is lazy and gated, so
-   this is cosmetic, but importing narrower three.js modules would quiet it.
+1. **Jahongir must fact-check the project copy.** The six projects were named in his
+   brief, but the descriptions, `role` lines and shipped/in-progress statuses were written
+   from the names alone. `adblogger.uz` is the only one with a real `href`. This is the
+   site making claims on his behalf — highest priority on this list.
+2. **Confirm the proficiency numbers that were not supplied.** Databases and tools came
+   from him directly; frontend, backend and AI/systems levels are inherited or inferred.
+3. **Check the journey copy.** The four milestones are real but the prose was rewritten,
+   and each step's `picked` list is what physically falls onto that tread.
+4. **Measure real frame rate on a real machine.** The automation tab is rAF-suspended, so
+   FPS could not be measured here — only per-frame work cost, long tasks and CLS. Open
+   DevTools' performance panel on a real desktop and confirm the journey scene holds 60fps
+   with the hero canvas also alive.
+5. **Three socials in `data/profile.ts` are still bare placeholders** — `telegram`,
+   `instagram`, `discord`. They are filtered out of the footer automatically; fill in the
+   handles and they appear (Discord has no icon mapped).
+6. **The contact form has no backend.** It opens the visitor's mail client.
+7. `public/claude-code.svg` is no longer referenced — the AI section leads with the live
+   terminal instead. Delete it, or bring it back as a real screenshot if a still is wanted.
+8. Optional: the shared three.js chunk still trips Vite's 500 kB warning. It is lazy and
+   gated, so this is cosmetic.
