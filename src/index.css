@@ -626,13 +626,12 @@
     inset: 0;
     display: grid;
     place-items: center;
-    will-change: transform, opacity;
   }
 
   .deck-card {
-    width: min(520px, 82vw);
-    border-radius: 26px;
-    padding: 1.75rem;
+    width: min(520px, 76vw);
+    border-radius: 22px;
+    padding: 1.35rem;
     /* An opaque fill, not `.glass-card`. Backdrop blur inside a subtree that is
        rotated and scaled by a spring is the one place on this page the
        compositor genuinely cannot afford it. */
@@ -645,6 +644,13 @@
     transition: box-shadow 0.45s ease;
   }
 
+  @media (min-width: 640px) {
+    .deck-card {
+      border-radius: 26px;
+      padding: 1.75rem;
+    }
+  }
+
   .deck-card-idle {
     cursor: pointer;
   }
@@ -652,30 +658,31 @@
   /* The year standing behind the deck. */
   .deck-year {
     font-family: 'Instrument Serif', Georgia, serif;
-    font-size: 24rem;
+    font-size: clamp(10rem, 30vw, 24rem);
     line-height: 0.8;
     letter-spacing: -0.03em;
     font-variant-numeric: lining-nums tabular-nums;
     white-space: nowrap;
   }
 
-  /* The stage's ambient light, tinted by whichever milestone is at the front.
-     `background-color` is the one part of this that transitions — a gradient
-     cannot be interpolated, so the colour has to live on a solid fill that is
-     then blurred. */
+  /* The stage's ambient light. Sized and positioned here; the colour arrives
+     inline, as a radial gradient built from the milestone at the front.
+
+     It used to be a solid fill under `filter: blur(90px)`, which meant
+     re-rasterising a 700x400 surface on every change of card. A gradient gives
+     the same soft falloff for no filter cost at all â which matters now that
+     this renders on phones too. */
   .deck-glow {
     position: absolute;
     left: 50%;
     top: 44%;
-    height: 400px;
-    width: 700px;
+    height: min(400px, 74%);
+    width: min(700px, 96%);
     transform: translate(-50%, -50%);
-    border-radius: 50%;
-    filter: blur(90px);
-    opacity: 0.15;
+    opacity: 0.16;
     pointer-events: none;
-    transition: background-color 0.6s ease;
   }
+
 
   /* Ground under the deck, so the cards are standing on something. */
   .deck-floor {
@@ -719,15 +726,15 @@
     -webkit-mask-image: linear-gradient(
       to right,
       transparent 0%,
-      #000 13%,
-      #000 87%,
+      #000 9%,
+      #000 91%,
       transparent 100%
     );
     mask-image: linear-gradient(
       to right,
       transparent 0%,
-      #000 13%,
-      #000 87%,
+      #000 9%,
+      #000 91%,
       transparent 100%
     );
     -webkit-mask-repeat: no-repeat;
