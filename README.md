@@ -31,7 +31,10 @@ src/
     About.tsx
     LearningTrajectory.tsx # Recharts area chart + education highlights
     Skills.tsx
-    Projects.tsx
+    Journey.tsx
+    JourneyDeck.tsx
+    JourneyRail.tsx
+    Statement.tsx
     Gaming.tsx
     Footer.tsx
     SectionHeader.tsx      # shared eyebrow/heading pattern
@@ -45,7 +48,7 @@ src/
   index.css
 ```
 
-All page content — bio, skills, projects, trajectory data points, education, hobbies — lives in
+All page content — bio, skills, timeline milestones, education, hobbies — lives in
 `src/data/content.ts`, so you can update the site without touching component code.
 
 ## Getting started
@@ -75,5 +78,5 @@ npm run preview
 ## Customizing
 
 - **Colors / fonts**: `tailwind.config.ts`
-- **Copy, skills, projects, trajectory data**: `src/data/content.ts`
+- **Copy, skills, timeline milestones**: `src/data/content.ts`
 - **3D core geometry/behavior**: `src/components/Hero3D.tsx`

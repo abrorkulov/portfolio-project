@@ -29,6 +29,12 @@ export default {
         ember: {
           DEFAULT: '#FDBA74',
         },
+        // Third accent, already used as a literal by the Databases skill
+        // group and by the journey rail, which tints one milestone per year.
+        azure: {
+          DEFAULT: '#7DD3FC',
+          dim: '#38BDF8',
+        },
         // Anthropic's warm accent. The AI section is the one part of the page
         // that steps off the teal/violet palette, so the tooling it is about
         // is recognisable at a glance.
@@ -47,6 +53,10 @@ export default {
         display: ['"Space Grotesk"', 'sans-serif'],
         body: ['"Inter"', 'sans-serif'],
         mono: ['"JetBrains Mono"', 'monospace'],
+        // The editorial accent. Used italic, for one emphasised phrase in a
+        // heading or a display numeral — never for body copy, and never more
+        // than once in a single line of type.
+        accent: ['"Instrument Serif"', 'Georgia', 'serif'],
       },
       backgroundImage: {
         grid: 'linear-gradient(to right, #1C2635 1px, transparent 1px), linear-gradient(to bottom, #1C2635 1px, transparent 1px)',

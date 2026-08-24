@@ -31,10 +31,11 @@ There is no router — nav links are `#hash` anchors.
 
 ```
 index.html            Meta/SEO/JSON-LD, Google Fonts <link>, favicon, PWA manifest link
+api/contact.ts        Serverless endpoint: contact form → Telegram. Reads the bot token.
 src/main.tsx          Entry. Registers the service worker (PROD only), boots analytics.
 src/App.tsx           Section order + <MotionConfig> + per-section <ErrorBoundary>.
 src/index.css         Tailwind layers + all custom classes (.glass-card, .text-gradient-*, …).
-tailwind.config.ts    Design tokens: void/signal/pulse/ink colours, display/body/mono fonts.
+tailwind.config.ts    Design tokens: void/signal/pulse/azure/ink colours, display/body/mono/accent fonts.
 vite.config.ts        Build config. Read the manualChunks comment before touching it.
 public/sw.js          Service worker. Read the fetch-handler comment before touching it.
 ```
@@ -61,25 +62,30 @@ Every string, skill, project and timeline entry lives here so components stay pr
 
 ### `src/components/` — rendered sections, in page order
 
-`Navbar` → `Hero` (+`Hero3D`/`Hero3DFallback`) → `About` → `TrainTimeline` → `Skills` →
+`Navbar` → `Hero` (+`Hero3D`/`Hero3DFallback`) → `About` → `Journey`
+(+`JourneyDeck` / `JourneyRail`) → `Statement` → `Skills` →
 `AiPractice` (+`ClaudeTerminal`) →
-playground (`PacketRunner`, `CodePlayground`) → `Projects` → `Footer` (+`ContactForm`).
+playground (`PacketRunner`, `CodePlayground`) → `Footer` (+`ContactForm`).
 
 Cross-cutting: `ParticleBackground` (fixed canvas), `CursorGlow` (full tier only),
 `ScrollProgress` (top bar, side rail, FABs),
 `SectionHeader` (numbered eyebrow/title/description/aside), `Panel` (shared chrome for the
 playground widgets), `ErrorBoundary`, `TechIcon`.
 
-Sections are numbered 01–07 via `SectionHeader`'s `index` prop (the footer hand-rolls its own 07).
-Keep them in order if you add or remove a section.
+Sections are numbered 01–06 via `SectionHeader`'s `index` prop (the footer hand-rolls its own 06).
+Keep them in order if you add or remove a section. `Statement` is deliberately outside the
+numbering — it is an `aside`, not a section, and has no nav or scroll-rail entry.
 
-The navbar switches to its drawer at **1024px**, not 768 — six links no longer fit beside the
+The navbar switches to its drawer at **1024px**, not 768 — the links no longer fit beside the
 brand and the CTA at `md`. That boundary is also where the motion tier flips, so "drawer" and
 "lite" now mean the same set of devices.
 
 **Currently unrendered** (present but not imported by `App.tsx`): `LearningTrajectory`, `Gaming`,
-`DinoGame`, `Cert3DBackground`, `LoadingScreen`. Note `LearningTrajectory` also uses
-`id="trajectory"` — it would collide with `TrainTimeline` if both were mounted.
+`DinoGame`, `Cert3DBackground`, `LoadingScreen`. `LearningTrajectory` also uses `id="trajectory"`,
+which would now collide with `Journey`, and it is the only thing in the repo that imports
+`recharts` — a dependency declared in `package.json` but absent from `node_modules`, so
+`tsc -b` failed until `npm install` was re-run. Deleting the component and the dependency
+together would remove both problems.
 
 ---
 
@@ -186,6 +192,156 @@ Three hard-won rules:
 `<MotionConfig reducedMotion="user">` in `App.tsx` handles reduced-motion for JS animation; the CSS
 media query alone could never cover Framer.
 
+### Typography — four faces, and the rule for the fourth
+
+| Family | Tailwind | Used for |
+|---|---|---|
+| Space Grotesk | `font-display` | Headings, card titles |
+| Inter | `font-body` | Body copy |
+| JetBrains Mono | `font-mono` | Eyebrows, labels, the terminal |
+| **Instrument Serif** | `font-accent` | One emphasised phrase per heading, and display numerals |
+
+The first three are all technical faces, which is coherent but flat — nothing on the page had a
+different voice. Instrument Serif is the editorial accent that fixes that, and it comes with
+rules:
+
+- **Italic only, one phrase per line, never body copy.** Its 400 is far too fine at 15px on a
+  near-black background.
+- Use **`.accent-em`**, not raw Tailwind classes. It carries two corrections that matter: a
+  `font-size: 1.1em` nudge, because Instrument Serif's x-height sits well under Space Grotesk's
+  and at a shared size the emphasis reads as a word that fell out of the line; and a
+  `padding-right`, because an italic's top-right terminal overhangs its glyph box and
+  `background-clip: text` crops to that box — without it the last letter loses its tail inside
+  a gradient.
+- **`.display-numeral`** is the same face for the journey's years. It sets tabular figures on
+  purpose: the numeral swaps as the reader travels, and proportional digits would shift the
+  whole thing sideways on every change.
+
+It loads in the same non-blocking `<link>` as the other three and ships one weight in roman and
+italic — only the italic is used. There are exactly eight `.accent-em` on the page; keep it
+that way, the effect dies if it is everywhere.
+
+### The journey deck — read before touching `JourneyDeck.tsx`
+
+Section 02 has two implementations and the motion tier picks one (`Journey.tsx` dispatches).
+`lite` gets `JourneyRail`: a flat spine with a station per milestone and no animation of any
+kind — there is deliberately not one Framer component in that file. `full` gets
+`JourneyDeck`: five milestones standing on a 3D arc, the front one square on and readable, its
+neighbours turned inward and set back. Arrows, the year buttons, the left/right arrow keys and a
+sideways drag all move the same spring.
+
+**There was a scroll-driven version in between, and it is not coming back.** It was a ~500vh
+track with a pinned stage that flew a camera down a corridor of gates as the reader scrolled. It
+looked genuinely good and it read badly, for reasons that apply to any scroll-linked stage:
+the reader could not get past the section without playing the whole animation, could not step
+back a milestone without scrolling up, and lost control of their own scrolling for five screens.
+The depth was the good part; binding it to the scrollbar was not. Do not reintroduce a
+scroll-linked stage in this section. Both current versions are about one screen tall and scroll
+past like anything else on the page.
+
+Three rules keep the deck working:
+
+1. **`transform-style: preserve-3d` on `.deck-stage`.** A `perspective` parent still places
+   its children in 3D without it, but paints them in **DOM order** — so the card two steps back
+   draws over the one at the front.
+2. **Anything that is not part of the scene must be a sibling of the stage, never a child.** The
+   ambient glow and the floor sit outside it: a plain child of a `preserve-3d` element sits at
+   `z: 0` and occludes every card behind it.
+3. **A faded card must stop accepting the pointer.** `pointerEvents` is driven off React state
+   (`isReachable`), not off the opacity motion value — an invisible card at `opacity: 0` still
+   swallows clicks meant for the one in front of it.
+
+4. **The edge fade is a mask (`.deck-viewport`), not an overlay.** It used to be a strip
+   painted in the page's background colour down either side, which worked only for as long as
+   the page background really was that one flat colour. The moment the colour field behind it
+   became a tinted, vignetted gradient, the strip showed up as what it always was: a hard-edged
+   grey rectangle sitting on top of the page. A mask removes pixels instead of covering them.
+   It needs its own element because a mask forces `transform-style` back to `flat`, and it
+   must not wrap the arrows, which sit exactly where it fades out. `mask-repeat: no-repeat` is
+   load-bearing: left at the default the gradient tiles, and a card that has travelled outside
+   the box meets a fresh opaque copy of it.
+
+That last one generalises, now that the page has a real background: **nothing may fake the page
+colour.** Any full-bleed layer painted `#09090b` to hide something will read as a box the
+moment it sits over the colour field. Fade with a mask, or with the element's own opacity.
+
+The drag writes straight to the position motion value and never through React state; only
+`isActive` / `isReachable` are React inputs, and both change once per settle. `setPointerCapture`
+is wrapped in try/catch because it throws if the pointer is no longer active by the time it runs.
+
+`.deck-card` is an opaque fill rather than `.glass-card` on purpose: backdrop blur inside a
+subtree that a spring is rotating and scaling is the one place on this page the compositor
+genuinely cannot afford it.
+
+### `position: sticky` and the page wrapper
+
+The App wrapper is `.clip-x`, not `overflow-x-hidden`, and it must stay that way.
+`overflow-x: hidden` on a real element forces the other axis from `visible` to `auto`, which
+makes the element a scroll container — and a scroll container that never scrolls is a
+scrollport that sticky children pin to and then ride away with. It silently broke every
+`position: sticky` on the page; nobody had noticed, because nothing needed to pin until the
+journey did. `overflow-x: clip` clips identically without creating one, with a `hidden` line
+above it as the fallback for browsers that predate it. `body` keeps `overflow-x: hidden` and
+is fine — a body's overflow propagates to the viewport, so the body itself stays `visible`.
+
+### The atmosphere — and the class that was hiding it
+
+Three fixed layers sit under the whole document:
+
+| Layer | What it is | Tier |
+|---|---|---|
+| `body::before` | the colour field: five radial gradients | all (drifts on full) |
+| `.page-veil` | a light from above, and a vignette | full only |
+| `body::after` | film grain | full only |
+
+**The app wrapper must stay transparent.** It used to carry `bg-void`, an opaque fill over the
+entire document — and because a positioned element paints above an earlier sibling's fixed
+pseudo-element, that one utility class hid the colour field completely, for as long as it had
+existed. The page was flat black with a handful of section-local glows doing all the work, while
+the stylesheet carried a carefully commented ambient wash that never rendered a pixel. The base
+colour belongs on `body`, which already sets it. If the background ever goes flat again, check
+for a background utility on that wrapper first.
+
+Everything here paints on fixed, promoted pseudo-elements rather than on `body` itself. A
+`background-attachment: fixed` cannot be moved by the compositor, so every scroll frame
+repaints the whole gradient stack across the viewport — see *Performance rules*.
+
+### The contact form — `api/contact.ts`
+
+The form posts to `/api/contact`, a Vercel edge function that forwards the message to a
+Telegram bot. Two environment variables, both set in the Vercel project:
+
+| Variable | Where it comes from |
+|---|---|
+| `TELEGRAM_BOT_TOKEN` | @BotFather, after `/newbot` |
+| `TELEGRAM_CHAT_ID` | the numeric id of the destination chat |
+
+A bot cannot open a conversation with a person and cannot address one by @username, so the
+destination has to be a numeric chat id, and that person must have sent the bot `/start` first.
+`https://api.telegram.org/bot<TOKEN>/getUpdates` returns it, as does @userinfobot. A channel
+works as `@channelname`.
+
+Three things in that file are load-bearing:
+
+- **The token never reaches the browser.** That is the entire reason the endpoint exists rather
+  than the form calling api.telegram.org directly — anything in the client bundle is public,
+  and a leaked bot token lets anyone send as the bot or read what it receives.
+- **Telegram's error bodies are never forwarded.** They can echo the request URL, which contains
+  the token; the endpoint answers with its own opaque error string instead.
+- **Visitor text is HTML-escaped** before it goes out with `parse_mode: HTML`.
+
+With either variable unset the endpoint answers **503**, and the form falls back to opening the
+visitor's mail client — so a deploy before the variables are configured degrades instead of
+swallowing messages. The form has three end states and they are deliberately distinct:
+`sent` (Telegram accepted it), `mailed` (the mail client was opened — never claim delivery
+here) and `error` (a 400; the visitor can fix it and retry). A hidden honeypot field named
+`company` is answered with 200 and dropped.
+
+`api/` is outside `tsconfig.json`'s `include`, so `tsc -b` does not typecheck it; the
+`process` declaration at the top of the file is what types the environment. There is a runnable
+check for the endpoint's behaviour — transpile it with esbuild and drive it with a stubbed
+`fetch`; ten cases covering validation, escaping, the honeypot and the failure paths.
+
 ### Shared design pieces
 
 - **`Panel`** — icon tile + title + subtitle + `meta`/`actions` header, used by Packet Runner and
@@ -195,6 +351,14 @@ media query alone could never cover Framer.
   `border-t border-white/5`, which chopped the page into hard slabs. Needs `position: relative` on
   the element (it draws via `::before`), so don't put it on unpositioned inner dividers.
 - **`.inset-surface`** — recessed panel for editor/console/HUD surfaces.
+- **`.dot-grid`** — a dot field, as an alternative texture to `.grid-overlay`'s ruled lines.
+  Static, one paint, and it gives a section a floor to sit on.
+- **`.btn-sweep`** — a highlight that crosses a button once, on hover, in CSS. The hero CTA ran
+  this as a Framer loop on `repeat: Infinity`, which keeps a repaint scheduled for the life of
+  the page, the whole time the hero is scrolled away included.
+- **`Statement`** — the centred pull-quote band between 02 and 03. Every other block on the
+  page is a left-aligned numbered section with a heading and a grid; this is the one that breaks
+  the rhythm. It is an `aside`, so the lite tier's `content-visibility` rule does not match it.
 - **`body::after`** carries a fixed SVG noise overlay at 3.5% opacity. Large flat dark areas band on
   cheap panels; the grain gives them material. It is `pointer-events: none` and `z-index: 1`.
 
@@ -280,7 +444,7 @@ If you change the strategy, bump `CACHE_NAME`.
 
 ## Current Status & Next Steps
 
-### What was accomplished across these two sessions
+### What was accomplished across these sessions
 
 **Session 1 — bug hunt and skills rebuild**
 
@@ -430,7 +594,88 @@ Lighthouse mobile (local preview, simulated throttling) went **68 → 99**:
   centred in a 1280px container, so between 1024px and ~1500px its expanded labels ran into the
   headline. It is `2xl:flex` now.
 
+**Session 7 — a new typeface, the projects section removed, and the journey rebuilt twice**
+
+The brief was: better design, add a Google font, do something far more interesting with the
+learning journey, delete the projects section, and stop claiming an IELTS score.
+
+- **Added Instrument Serif** as `font-accent` and `.accent-em` — see *Typography* above for
+  the rules and the two optical corrections it carries. It appears exactly eight times: the
+  hero's second headline line, all five section titles, the statement band and the footer.
+- **Deleted the projects section** — the component, the `projects` and `Project` exports in
+  `content.ts`, the nav link and the scroll-rail entry. Sections renumbered 01–06, and the
+  hero's primary call to action, which pointed at `#projects`, now reads "Try the playground"
+  and points at `#playground`.
+- **Removed the IELTS score.** `profile.languages` now reads English / Good, and the 2026
+  timeline entry no longer mentions it.
+- **Rebuilt the journey three times.** A flat spine with a pinned year panel (too quiet); then a
+  scroll-driven 3D corridor (dramatic, but it took the page hostage — see *The journey deck*);
+  finally `JourneyDeck`, which keeps the depth and drops the scroll binding entirely. The flat
+  version survives as `JourneyRail` and is what `lite` renders.
+- **Fixed a page-wide `position: sticky` bug** while building the first version — see
+  *`position: sticky` and the page wrapper*. It had been latent since the App wrapper was
+  written, because nothing on the page had needed to pin before.
+- **Added the `Statement` band** between 02 and 03, and the `azure` colour token (the journey
+  walks signal –> azure –> pulse –> ember, one accent per milestone, so the corridor and
+  the rail both change hue as the reader descends).
+- **Replaced the hero CTA's infinite Framer sweep** with `.btn-sweep`, a CSS hover animation.
+  Session 5 claimed this had already been done; it had not, and the loop was still scheduling a
+  repaint for the life of the page.
+- **Fixed a stale hard-coded age**: the About section's description opened with "Sixteen," while
+  `profile.age` said something else. It no longer states the age at all — the fact tile
+  directly beneath it already does, from the data.
+- `npm install` had to be re-run: `recharts` was declared but missing, so `tsc -b` failed on
+  the unrendered `LearningTrajectory` before any of this work could be verified.
+
+**Session 8 — a background that was never visible, and a contact form that now delivers**
+
+- **Found and fixed the background.** `body::before` had been covered by `bg-void` on the app
+  wrapper since it was written — see *The atmosphere* above. The wrapper is transparent now,
+  the colour field was rebuilt as five gradients including the azure and a warm bleed at the
+  foot of the page, and a new `.page-veil` adds a light from above and a vignette on the full
+  tier. Phones gain the colour field at no animation cost and are otherwise unchanged.
+- **Wired the contact form to Telegram** through `api/contact.ts` — see above for the
+  environment variables and why the token cannot live in the client. The mail-client path is
+  kept as the fallback, and the success copy no longer claims delivery unless Telegram accepted
+  the message.
+- **Filled in the Telegram social**, so the footer now renders a Telegram channel row alongside
+  GitHub and LinkedIn.
+- Softened the hero's bottom fade from `to-void` to `to-void/85`; at full opacity it cut a
+  flat band across the newly visible colour field.
+- **Then found the second half of the same bug.** With the background no longer flat, the
+  journey deck's edge fade — a strip painted in the old page colour — became a visible grey
+  rectangle over the colour field. It is a mask now; see rule 4 under *The journey deck*.
+
 ### Fully operational
+
+Verified after session 7, in a real browser, at 1440px wide (full) and 390px (lite).
+
+Full tier: sections 01–06 in order with no gaps, no duplicate IDs, no dead anchors,
+`scrollWidth === clientWidth`, no console output of any kind, Instrument Serif loaded and
+resolving on all eight `.accent-em`, and the deck working — the arrows, the year buttons and a
+synthetic 600px drag all land on the right card and snap cleanly (opacity falls 1.00 / 0.62 /
+0.23 across the arc), with the ambient glow and the card ring taking the milestone's accent.
+The journey section is 1.24vh tall and the whole page is 12vh, down from 5.4vh and 16.1vh when
+the same content was a scroll-driven corridor.
+
+Lite tier at 390px: `data-motion="lite"`, **zero** `.deck-stage` elements, zero canvases,
+the flat rail with its four stations and its "now" terminus, the grain overlay `display: none`,
+no horizontal overflow, and no running CSS keyframe animations (the only entries in
+`getAnimations()` are the navbar's one-shot colour transition and one Framer WAAPI fade on a
+floating action button).
+
+Two automation notes for whoever verifies this next, both of which cost time this session:
+
+- The driven tab reports `visibilityState: 'hidden'`, so the rendering pipeline is throttled.
+  **Scroll events are not dispatched at all**, which freezes anything built on `useScroll` or
+  `IntersectionObserver` — the scroll-driven journey looked completely broken until this was understood.
+  `window.dispatchEvent(new Event('scroll'))` after a programmatic `scrollTo` is enough:
+  Framer only needs the notification and re-reads the real `scrollY` itself.
+- The `setTimeout`-backed `requestAnimationFrame` shim from session 6 is throttled to ~1Hz in
+  a background tab, so springs appear frozen mid-flight. Backing the shim with a
+  `MessageChannel` instead is not throttled and lets them settle in real time.
+
+
 
 Typecheck, lint and build are all clean. Verified in a real browser: all 41 skill cards render, all
 5 filters work, no console errors, no duplicate IDs, no dead anchor links, no horizontal overflow,
@@ -484,26 +729,24 @@ Build output: `index` ~68 kB gz + `motion-vendor` 43 kB gz + CSS ~9 kB gz on fir
 
 ### Next steps
 
-1. **Verify the new skill entries.** Session 2 added ~21 technologies (Python, SQL, PostgreSQL,
-   MySQL, MongoDB, SQLite, Express, REST APIs, HTML5, CSS3, Sass, GitHub, npm, Bash, Vercel, Figma,
-   Vite, Machine Learning, Networking, Data Structures, Windows Internals) with **assumed**
-   proficiency levels and notes. Jahongir must confirm or prune these — they are currently claims
-   the site makes on his behalf.
-2. **Phone layout and the scroll spy were never visually confirmed.** Browser-window emulation
-   still does not take effect in the automation session, and the automated tab reports
-   `visibilityState: 'hidden'`, which suspends IntersectionObserver callbacks and smooth scrolling
-   — so the `lite` tier and `useScrollSpy` are verified by forcing `data-motion` and by geometry,
-   not by watching them. On a real phone, check: the hero, the nav drawer, the skills filter row,
-   and that scrolling now feels smooth. On any real browser, scroll the page and confirm the navbar
-   pill and the left rail track the section you are looking at.
-3. **Decide on the unrendered components** listed above — wire them in or delete them. Watch the
-   `id="trajectory"` collision.
-4. **Three socials in `content.ts` are still bare placeholders** — `telegram: 'https://t.me/'`,
-   `instagram: 'https://instagram.com/'`, `discord: 'https://discord.com'`. They are filtered out of
-   the footer automatically; fill in the handles and they appear (Discord has no icon mapped yet).
-5. **The contact form has no backend.** It opens the visitor's mail client. If a real inbox
-   submission is wanted, wire up Formspree / Resend / a Vercel function.
-6. **`public/Снимок экрана 2026-07-24 111904.png`** is a stray screenshot that ships to production
-   on every deploy. Delete it unless it is deliberate.
-7. Optional: `Hero3D` at 842 kB raw still trips Vite's chunk-size warning. It is lazy and gated, so
-   this is cosmetic, but importing narrower three.js modules would quiet it.
+1. **Verify the skill entries.** Session 2 added ~21 technologies with **assumed** proficiency
+   levels and notes. Jahongir must confirm or prune these — they are currently claims the site
+   makes on his behalf.
+2. **Flip through the deck on a real trackpad and mouse.** Drag feel is the one thing a harness
+   cannot judge: `DRAG_STEP` in `JourneyDeck.tsx` (currently 300px per card) is the number to
+   change if it feels heavy or twitchy, and `SPREAD` / `TILT` / `DEPTH` above it control how
+   far the neighbouring cards sit out and turn.
+3. **`statement` in `content.ts` is copy written on Jahongir's behalf**, derived from the
+   "pixels to kernel" line already in his bio. Reword or replace it.
+4. **Decide on the unrendered components** listed above — wire them in or delete them. Deleting
+   `LearningTrajectory` also lets `recharts` go.
+5. **Three socials in `content.ts` are still bare placeholders** — `telegram`, `instagram`,
+   `discord`. They are filtered out of the footer automatically; fill in the handles and they
+   appear (Discord has no icon mapped yet).
+6. **Set `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` in Vercel.** Until both exist the
+   contact endpoint answers 503 and the form falls back to opening a mail client. See
+   *The contact form* above for how to get each value.
+7. **`public/Снимок экрана 2026-07-24 111904.png`** is a stray screenshot that ships to
+   production on every deploy. Delete it unless it is deliberate.
+8. Optional: `Hero3D` at 839 kB raw still trips Vite's chunk-size warning. It is lazy and
+   gated, so this is cosmetic, but importing narrower three.js modules would quiet it.

@@ -44,15 +44,27 @@
     overflow-x: hidden;
   }
 
-  /* The ambient colour wash.
+  /* The atmosphere.
 
-     This used to be three radial gradients painted onto the body with
-     `background-attachment: fixed`, which is the most expensive thing a mobile
-     browser can be asked to do while scrolling: a fixed background cannot be
-     moved by the compositor, so every frame repainted all three gradients
-     across the whole viewport. Moving them onto a fixed pseudo-element gets an
-     identical look from a layer the compositor simply slides — no repaint at
-     all. Do not put this back on `body`. */
+     Three fixed layers sit under the whole document:
+
+       body::before   the colour field, drifting on the full tier
+       .page-veil     a light from above and a vignette, full tier only
+       body::after    film grain, full tier only
+
+     None of this was visible until now, and the reason is worth keeping.
+     The app wrapper carried `bg-void` â an opaque fill over the entire
+     document â and a positioned element paints above an earlier sibling's
+     fixed pseudo-element, so that one utility class hid the colour field
+     completely. The page was flat black with a handful of section-local
+     glows doing all the work. **The wrapper must stay transparent**; the
+     base colour belongs on `body`, which already sets it.
+
+     Painting on a fixed pseudo-element rather than on `body` itself is the
+     other half of it: `background-attachment: fixed` cannot be moved by the
+     compositor, so every scroll frame repaints the whole gradient stack
+     across the viewport. This is a layer the compositor simply slides. Do
+     not put it back on `body`. */
   body::before {
     content: '';
     position: fixed;
@@ -60,11 +72,35 @@
     z-index: 0;
     pointer-events: none;
     background-image:
-      radial-gradient(circle at 15% 8%, rgba(94, 234, 212, 0.07), transparent 42%),
-      radial-gradient(circle at 85% 0%, rgba(167, 139, 250, 0.08), transparent 45%),
-      radial-gradient(circle at 50% 100%, rgba(94, 234, 212, 0.04), transparent 50%);
+      radial-gradient(62% 46% at 8% 2%, rgba(94, 234, 212, 0.14), transparent 64%),
+      radial-gradient(56% 44% at 92% 0%, rgba(167, 139, 250, 0.16), transparent 62%),
+      radial-gradient(50% 40% at 84% 56%, rgba(125, 211, 252, 0.1), transparent 66%),
+      radial-gradient(58% 46% at 14% 72%, rgba(94, 234, 212, 0.09), transparent 68%),
+      radial-gradient(80% 54% at 50% 114%, rgba(217, 119, 87, 0.08), transparent 64%);
     /* Its own compositor layer, so it is never rasterised again after the
        first paint. */
+    transform: translateZ(0);
+  }
+
+  /* A broad light from above and a vignette below it.
+
+     Without these the colour field reads as an evenly tinted sheet. The light
+     gives the page a lit top edge to sit under; the vignette lets the corners
+     fall away so the column of content is where the eye settles.
+
+     It is a sibling of the particle canvas and paints after it, so the
+     constellation is dimmed toward the edges along with everything else â
+     which is the point. Full tier only, for the same reason as the grain: a
+     full-viewport layer is blended by the compositor on every scrolled frame,
+     and that is a cost a phone should not pay for depth it cannot see. */
+  .page-veil {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background-image:
+      radial-gradient(92% 56% at 50% -10%, rgba(255, 255, 255, 0.055), transparent 58%),
+      radial-gradient(132% 104% at 50% 20%, transparent 40%, rgba(0, 0, 0, 0.55) 100%);
     transform: translateZ(0);
   }
 
@@ -226,6 +262,27 @@
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
+  }
+
+  /* Horizontal overflow guard for the page wrapper.
+
+     This was `overflow-x: hidden`, and that quietly broke every
+     `position: sticky` on the page. `overflow-x: hidden` on a real element
+     forces the other axis from `visible` to `auto`, which makes the element a
+     scroll container — and a scroll container that never actually scrolls is
+     a scrollport a sticky child pins to and then rides away with. The
+     journey's year panel is the first thing on this page that needed to pin,
+     which is why nobody had noticed.
+
+     `clip` clips identically without creating a scroll container. The
+     `hidden` line above it is the fallback for browsers that predate it
+     (Safari < 16); they lose sticky, not layout.
+
+     `body` keeps `overflow-x: hidden` and is fine: the body's overflow
+     propagates to the viewport, so the body itself stays `visible`. */
+  .clip-x {
+    overflow-x: hidden;
+    overflow-x: clip;
   }
 
   /* Base card. No backdrop blur here: on a phone every blurred surface makes
@@ -425,6 +482,284 @@
   .skill-card:hover::before,
   .skill-card:focus-within::before {
     opacity: 0.85;
+  }
+
+  /* -------------------------------------------------------------------------
+     Editorial accent — Instrument Serif
+
+     The page is set in three technical faces: a geometric display, a neutral
+     sans and a mono. That is coherent but flat, because nothing on it has a
+     different voice. One high-contrast serif italic, used for exactly one
+     phrase per heading, is what turns a list of headings into typography.
+
+     Rules for using it: italic only, one phrase per line, and never for body
+     copy — its 400 is far too fine at 15px on a near-black background.
+  ------------------------------------------------------------------------- */
+  .accent-em {
+    font-family: 'Instrument Serif', Georgia, serif;
+    font-style: italic;
+    font-weight: 400;
+    /* Instrument Serif's x-height sits well under Space Grotesk's, so at a
+       shared font-size the emphasis reads as a word that fell out of the
+       line. The nudge puts the two back on the same optical weight. */
+    font-size: 1.1em;
+    letter-spacing: 0;
+    /* An italic's top-right terminal overhangs its glyph box, and
+       `background-clip: text` crops to that box — without the padding the
+       final letter loses its tail wherever the accent sits in a gradient. */
+    padding-right: 0.06em;
+  }
+
+  /* Display numerals — the years on the journey rail. Tabular figures matter
+     here: the year swaps between milestones, and proportional digits would
+     shift the whole numeral sideways on every change. */
+  .display-numeral {
+    font-family: 'Instrument Serif', Georgia, serif;
+    font-weight: 400;
+    line-height: 0.82;
+    letter-spacing: -0.02em;
+    font-variant-numeric: lining-nums tabular-nums;
+  }
+
+  /* A dot field, as an alternative texture to `.grid-overlay`'s ruled lines.
+     Static, one paint, and it gives a section a floor to sit on. */
+  .dot-grid {
+    background-image: radial-gradient(
+      rgba(255, 255, 255, 0.11) 1px,
+      transparent 1px
+    );
+    background-size: 22px 22px;
+    -webkit-mask-image: radial-gradient(ellipse at center, #000 10%, transparent 72%);
+    mask-image: radial-gradient(ellipse at center, #000 10%, transparent 72%);
+  }
+
+  /* The journey spine. A hairline that fades in at the top and out at the
+     bottom, so the rail has no hard ends to explain. */
+  .journey-spine {
+    background: linear-gradient(
+      to bottom,
+      transparent,
+      rgba(255, 255, 255, 0.14) 8%,
+      rgba(255, 255, 255, 0.14) 84%,
+      transparent
+    );
+  }
+
+  /* One light travelling the rail, tinted by the milestone it has reached.
+     Driven by `scaleY` from a top origin — animating `height` would relayout
+     the whole column on every frame of the scroll. */
+  .journey-trace {
+    background: linear-gradient(
+      to bottom,
+      var(--trace-from, #5eead4),
+      var(--trace-to, #a78bfa)
+    );
+    transform-origin: top;
+  }
+
+  /* A sweep that crosses a button once, on hover.
+
+     The hero call-to-action used to run this as a Framer loop on
+     `repeat: Infinity` with a 3s delay, which keeps a repaint scheduled for
+     the life of the page — including the entire time the hero is scrolled
+     away. On hover only, in CSS, it costs nothing until someone reaches for
+     the button. */
+  .btn-sweep {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .btn-sweep::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    transform: translateX(-120%);
+    background: linear-gradient(
+      100deg,
+      transparent 25%,
+      rgba(255, 255, 255, 0.22) 50%,
+      transparent 75%
+    );
+  }
+
+  /* -------------------------------------------------------------------------
+     The journey deck — the desktop learning journey.
+
+     This replaced a scroll-driven version: a ~500vh track with a pinned stage
+     that flew a camera down a corridor. It looked good and it read badly. Tying
+     a scene to the scrollbar means the reader cannot leave it without watching
+     the whole thing, cannot go back a step without scrolling up, and cannot
+     scroll past the section at their own pace — the page stops being theirs.
+     Do not reintroduce a scroll-linked stage here.
+
+     The deck is the same 3D depth with the scroll taken out. Five milestones
+     stand on an arc facing the reader; the front one is square on and legible,
+     its neighbours are turned inward and pushed back. Arrows, the year buttons,
+     the arrow keys and a horizontal drag all move the same spring. The section
+     is one screen tall and scrolls past like any other.
+
+     Two rules carried over from the version before it, both still load-bearing:
+
+     - `transform-style: preserve-3d` on `.deck-stage` is what makes the browser
+       depth-sort the cards. Without it a `perspective` parent still places its
+       children in 3D but paints them in DOM order, so the card two steps back
+       draws over the one at the front.
+     - Anything that is not part of the scene — the ambient glow, the floor, the
+       edge fade — must be a sibling of the stage, never a child. A plain child
+       of a `preserve-3d` element sits at `z: 0` and occludes every card behind
+       it.
+  ------------------------------------------------------------------------- */
+  .deck-stage {
+    position: absolute;
+    inset: 0;
+    perspective: 1200px;
+    perspective-origin: 50% 48%;
+    transform-style: preserve-3d;
+    /* The drag is a pointer gesture on the horizontal axis; letting the browser
+       also treat it as a pan would fight it on trackpads and touch screens. */
+    touch-action: pan-y;
+  }
+
+  .deck-layer {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    will-change: transform, opacity;
+  }
+
+  .deck-card {
+    width: min(520px, 82vw);
+    border-radius: 26px;
+    padding: 1.75rem;
+    /* An opaque fill, not `.glass-card`. Backdrop blur inside a subtree that is
+       rotated and scaled by a spring is the one place on this page the
+       compositor genuinely cannot afford it. */
+    background: linear-gradient(160deg, #16161c, #0b0b0f);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.1),
+      0 0 0 1px var(--ring, rgba(255, 255, 255, 0.09)),
+      0 44px 110px -44px rgba(0, 0, 0, 0.95),
+      0 0 80px -34px var(--glow, transparent);
+    transition: box-shadow 0.45s ease;
+  }
+
+  .deck-card-idle {
+    cursor: pointer;
+  }
+
+  /* The year standing behind the deck. */
+  .deck-year {
+    font-family: 'Instrument Serif', Georgia, serif;
+    font-size: 24rem;
+    line-height: 0.8;
+    letter-spacing: -0.03em;
+    font-variant-numeric: lining-nums tabular-nums;
+    white-space: nowrap;
+  }
+
+  /* The stage's ambient light, tinted by whichever milestone is at the front.
+     `background-color` is the one part of this that transitions — a gradient
+     cannot be interpolated, so the colour has to live on a solid fill that is
+     then blurred. */
+  .deck-glow {
+    position: absolute;
+    left: 50%;
+    top: 44%;
+    height: 400px;
+    width: 700px;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    filter: blur(90px);
+    opacity: 0.15;
+    pointer-events: none;
+    transition: background-color 0.6s ease;
+  }
+
+  /* Ground under the deck, so the cards are standing on something. */
+  .deck-floor {
+    position: absolute;
+    bottom: 4%;
+    left: 50%;
+    height: 130px;
+    width: min(900px, 92%);
+    transform: translateX(-50%);
+    pointer-events: none;
+    background: radial-gradient(
+      ellipse at center,
+      rgba(255, 255, 255, 0.06),
+      transparent 70%
+    );
+  }
+
+  /* The deck's viewport. Its only job is to fade the outermost cards out at
+     the left and right edges of the deck.
+
+     This has to be a mask, not an overlay. It used to be a strip painted with
+     the page's background colour down either side, which worked only for as
+     long as the page background really was that one flat colour. The moment
+     the colour field behind it became a tinted, vignetted gradient, the strip
+     showed up as exactly what it was: a hard-edged grey rectangle sitting on
+     top of the page. A mask removes pixels instead of covering them, so
+     whatever is behind shows through untouched.
+
+     Two reasons it is its own element rather than a property on the stage:
+
+     - A mask forces `transform-style` back to `flat`, so masking `.deck-stage`
+       itself would collapse the 3D scene.
+     - It must not wrap the arrows, which sit exactly where the mask fades out.
+
+     `mask-repeat: no-repeat` matters. Left at the default the gradient tiles,
+     and a card that has travelled outside the box meets a fresh opaque copy
+     of it instead of staying hidden. */
+  .deck-viewport {
+    position: absolute;
+    inset: 0;
+    -webkit-mask-image: linear-gradient(
+      to right,
+      transparent 0%,
+      #000 13%,
+      #000 87%,
+      transparent 100%
+    );
+    mask-image: linear-gradient(
+      to right,
+      transparent 0%,
+      #000 13%,
+      #000 87%,
+      transparent 100%
+    );
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-size: 100% 100%;
+    mask-size: 100% 100%;
+  }
+
+  .deck-arrow {
+    display: grid;
+    height: 48px;
+    width: 48px;
+    place-items: center;
+    border-radius: 9999px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(9, 9, 11, 0.72);
+    color: #7c8b9c;
+    transition:
+      color 0.25s ease,
+      border-color 0.25s ease,
+      background-color 0.25s ease;
+  }
+
+  .deck-arrow:hover:not(:disabled) {
+    color: #e6edf3;
+    border-color: rgba(94, 234, 212, 0.45);
+    background: rgba(94, 234, 212, 0.1);
+  }
+
+  .deck-arrow:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
   }
 
   /* The AI section's warm wash. Two static radial gradients on one promoted
@@ -627,6 +962,10 @@
       0 14px 34px -20px rgba(0, 0, 0, 0.75);
   }
 
+  .btn-sweep:hover::after {
+    animation: sweep-across 0.85s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
   .card-sheen:hover::before {
     opacity: 1;
     animation: sheen-cross 0.9s cubic-bezier(0.22, 1, 0.36, 1);
@@ -653,7 +992,8 @@ html[data-motion='lite'] .text-sheen {
    the compositor blends it on each frame for the whole page. It exists to stop
    banding on large flat darks — which is a desktop-monitor problem. Phones
    drop it entirely. */
-html[data-motion='lite'] body::after {
+html[data-motion='lite'] body::after,
+html[data-motion='lite'] .page-veil {
   display: none;
 }
 
@@ -739,6 +1079,15 @@ html[data-motion='lite'] .section-rule::after {
   }
   55% {
     background-position: -20% 50%;
+  }
+}
+
+@keyframes sweep-across {
+  from {
+    transform: translateX(-120%);
+  }
+  to {
+    transform: translateX(120%);
   }
 }
 

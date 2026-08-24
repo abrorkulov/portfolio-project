@@ -44,7 +44,14 @@ export default function AiPractice() {
         <SectionHeader
           index="04"
           eyebrow={aiPractice.eyebrow}
-          title={aiPractice.title}
+          title={
+            <>
+              {aiPractice.title}{' '}
+              <span className="accent-em text-claude-bright">
+                {aiPractice.titleAccent}
+              </span>
+            </>
+          }
           description={aiPractice.description}
         />
 

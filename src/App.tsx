@@ -5,10 +5,10 @@ import { useNearViewport } from './lib/useNearViewport'
 import Navbar from './components/Navbar'
 import Hero from './components/Hero'
 import About from './components/About'
-import TrainTimeline from './components/TrainTimeline'
+import Journey from './components/Journey'
+import Statement from './components/Statement'
 import Skills from './components/Skills'
 import AiPractice from './components/AiPractice'
-import Projects from './components/Projects'
 import Footer from './components/Footer'
 import ErrorBoundary from './components/ErrorBoundary'
 import ScrollProgress from './components/ScrollProgress'
@@ -83,8 +83,11 @@ export default function App() {
     // `lib/motion.ts` are already inert there, so this is a backstop for any
     // motion component that hand-rolls its own values.
     <MotionConfig reducedMotion={isLiteMotion ? 'always' : 'user'}>
-      <div className="relative min-h-screen overflow-x-hidden bg-void font-body text-ink">
+      <div className="clip-x relative min-h-screen font-body text-ink">
         <ParticleBackground />
+        {/* Light from above and a vignette. After the canvas so the
+            constellation is dimmed toward the edges with everything else. */}
+        <div aria-hidden="true" className="page-veil" />
         <CursorGlow />
         <ScrollProgress />
         <Navbar />
@@ -97,8 +100,12 @@ export default function App() {
             <About />
           </ErrorBoundary>
 
-          <ErrorBoundary fallbackTitle="Timeline Section Fault">
-            <TrainTimeline />
+          <ErrorBoundary fallbackTitle="Journey Section Fault">
+            <Journey />
+          </ErrorBoundary>
+
+          <ErrorBoundary fallbackTitle="Statement Fault">
+            <Statement />
           </ErrorBoundary>
 
           <ErrorBoundary fallbackTitle="Skills Section Fault">
@@ -118,17 +125,19 @@ export default function App() {
               <SectionHeader
                 index="05"
                 eyebrow="playground"
-                title="Things you can actually play with"
+                title={
+                  <>
+                    Things you can{' '}
+                    <span className="accent-em text-gradient">actually</span>{' '}
+                    play with
+                  </>
+                }
                 description="Two small builds running live on this page — a canvas game and a JavaScript scratchpad. No screenshots, no video."
               />
 
               <PlaygroundWidgets />
             </div>
           </section>
-
-          <ErrorBoundary fallbackTitle="Projects Showcase Fault">
-            <Projects />
-          </ErrorBoundary>
         </main>
 
         <Footer />

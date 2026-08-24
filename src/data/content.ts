@@ -5,15 +5,15 @@
 export const profile = {
   name: 'Jahongir Abrorkulov',
   role: 'Frontend & AI/Systems Developer',
-  age: 16,
+  age: 15,
   location: 'Tashkent, Uzbekistan',
   bio: [
-    "I'm a 16-year-old Frontend & AI/Systems developer based in Tashkent, Uzbekistan, passionate about building high-performance web interfaces and understanding the systems underneath them.",
+    "I'm a 15-year-old Frontend & AI/Systems developer based in Tashkent, Uzbekistan, passionate about building high-performance web interfaces and understanding the systems underneath them.",
     'My expertise spans frontend engineering with React, TypeScript, and modern design systems, backend development with C#, C++, .NET, and PHP, and systems-level work with Ubuntu.',
     'Currently focused on AI Engineering at Najot Ta\'lim, with advanced skills in AI prompting and system integration. I believe in understanding technology at every layer—from pixels to kernel.',
   ],
   languages: [
-    { name: 'English', level: 'IELTS 5.5' },
+    { name: 'English', level: 'Good' },
     { name: 'Russian', level: 'Fluent' },
     { name: 'Uzbek', level: 'Native' },
   ],
@@ -34,11 +34,23 @@ export const profile = {
   email: 'jahongir.abrorkulov@gmail.com',
   socials: {
     github: 'https://github.com/abrorkulov',
-    telegram: 'https://t.me/',
+    telegram: 'https://t.me/abrorkulov',
     instagram: 'https://instagram.com/',
     linkedin: 'https://linkedin.com/in/jahongir-abrorkulov',
     discord: 'https://discord.com',
   },
+}
+
+/**
+ * The full-bleed pull-quote between sections 02 and 03. One idea, set large —
+ * the page needs a breath between the journey and the wall of skill cards.
+ */
+export const statement = {
+  eyebrow: 'working principle',
+  lead: 'Every layer,',
+  accent: 'all the way down.',
+  body:
+    'I want to know what the pixel does, what the framework does with it, and what the machine underneath is actually doing. Most of what I have learned came from refusing to stop at the first layer that worked.',
 }
 
 export type SkillCategory = {
@@ -174,6 +186,8 @@ export type TimelineEvent = {
   title: string
   description: string
   icon: string
+  /** Two or three words, printed beside the year on the rail. */
+  tag: string
 }
 
 export const timelineEvents: TimelineEvent[] = [
@@ -182,61 +196,30 @@ export const timelineEvents: TimelineEvent[] = [
     title: 'Enrolled in Frontend Development',
     description: 'Started my journey at MARS IT School (Sergeli branch) for Frontend Development. Also began English courses at Cambridge Learning Center (Sergeli branch) to improve my language skills.',
     icon: 'rocket',
+    tag: 'the first step',
   },
   {
     year: '2025',
     title: 'Created Cs 2 hack client',
     description: 'Developed a custom hack client for Counter-Strike 2, showcasing my skills in reverse engineering, system analysis, and low-level programming.',
     icon: 'gamepad',
+    tag: 'systems work',
   },
   {
     year: '2025',
     title: 'React Mastery & First Startup',
     description: 'Completed React and JavaScript mastery. Co-founded and developed Adblogger.uz with classmates - my first real-world project bringing ideas to life.',
     icon: 'code',
+    tag: 'shipping',
   },
   {
     year: '2026',
     title: 'AI Engineering Focus',
-    description: 'Joined Najot Ta\'lim (Chilonzor branch) for AI Engineering. Scored IELTS 5.5. Currently focusing on advanced AI prompting and system integration.',
+    description: 'Joined Najot Ta\'lim (Chilonzor branch) for AI Engineering. Currently focusing on advanced AI prompting and system integration.',
     icon: 'brain',
+    tag: 'ai engineering',
   },
   
-]
-
-export type Project = {
-  title: string
-  description: string
-  stack: string[]
-  tag: string
-  status: 'shipped' | 'in_progress'
-}
-
-export const projects: Project[] = [
-  {
-    title: 'Typing Speed Test Platform',
-    description:
-      'A custom web app for measuring typing speed and accuracy in real time, with live WPM tracking, accuracy scoring, and session history.',
-    stack: ['React', 'TypeScript', 'Tailwind CSS'],
-    tag: 'web_app',
-    status: 'shipped',
-  },
-  {
-    title: 'System & Game Security Research',
-    description:
-      'A low-level research project exploring memory layout, process architecture, and system analysis techniques in the context of Counter-Strike 2, focused on understanding how game clients manage state and resist tampering.',
-    stack: ['C++', 'Windows Internals', 'Reverse Engineering'],
-    tag: 'systems',
-    status: 'in_progress',
-  },
-  {
-    title: 'Utility Toolbelt',
-    description:
-      'A growing collection of small utility tools and web apps — from productivity scripts to dev-focused browser extensions — built to solve everyday friction points.',
-    stack: ['TypeScript', 'Node.js', 'Vite'],
-    tag: 'tools',
-    status: 'in_progress',
-  },
 ]
 
 /** One line of the replayed Claude Code session in the AI section. */
@@ -248,7 +231,9 @@ export type SessionLine = {
 
 export const aiPractice = {
   eyebrow: 'ai_toolkit',
-  title: 'Three years of building with Claude',
+  title: 'Three years of building with',
+  /** Set in the serif italic by `SectionHeader`. */
+  titleAccent: 'Claude',
   description:
     'AI is part of how I actually work, not a tab I keep open. Three years in, this is still the whole setup — one model, one tool, in the terminal, checked every time.',
 

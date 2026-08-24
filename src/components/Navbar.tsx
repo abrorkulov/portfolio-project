@@ -11,7 +11,6 @@ const links = [
   { href: '#skills', id: 'skills', label: 'skills' },
   { href: '#ai', id: 'ai', label: 'ai' },
   { href: '#playground', id: 'playground', label: 'playground' },
-  { href: '#projects', id: 'projects', label: 'projects' },
 ]
 
 const sectionIds = links.map((link) => link.id)

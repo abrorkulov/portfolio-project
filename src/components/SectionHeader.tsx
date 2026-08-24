@@ -10,7 +10,8 @@ import {
 
 type SectionHeaderProps = {
   eyebrow: string
-  title: string
+  /** Accepts a node so a caller can set one phrase in the serif italic. */
+  title: React.ReactNode
   description?: string
   /** Two-digit section index, e.g. "01". Renders a rule beside the eyebrow. */
   index?: string

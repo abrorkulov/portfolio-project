@@ -30,18 +30,33 @@ const heroItem = isLiteMotion
       },
     }
 
-/** The three lines of the headline, each with its own gradient treatment. */
+/**
+ * The three lines of the headline.
+ *
+ * The middle line carries the page's one hero-scale use of the editorial
+ * serif. Three lines of the same geometric display face is a competent
+ * headline; one line of italic serif inside them is a designed one.
+ */
 const headline = [
-  { text: 'Frontend', className: 'text-sheen' },
+  { key: 'frontend', node: <span className="text-sheen">Frontend</span> },
   {
-    text: '& AI/Systems',
-    className:
-      'bg-gradient-to-r from-pulse via-signal to-signal-bright bg-clip-text text-transparent',
+    key: 'ai-systems',
+    node: (
+      <>
+        <span className="text-ink-muted">&amp;</span>{' '}
+        <span className="accent-em bg-gradient-to-r from-pulse via-signal to-signal-bright bg-clip-text text-transparent">
+          AI/Systems
+        </span>
+      </>
+    ),
   },
   {
-    text: 'Developer',
-    className:
-      'bg-gradient-to-r from-ink to-signal bg-clip-text text-transparent',
+    key: 'developer',
+    node: (
+      <span className="bg-gradient-to-r from-ink to-signal bg-clip-text text-transparent">
+        Developer
+      </span>
+    ),
   },
 ]
 
@@ -75,7 +90,7 @@ export default function Hero() {
       className="relative flex min-h-[100svh] items-center overflow-hidden pt-24 sm:pt-28"
     >
       <div className="grid-overlay pointer-events-none absolute inset-0 opacity-30" />
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent via-void/50 to-void" />
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent via-void/40 to-void/85" />
 
       {/* Ambient glow effects */}
       <div className="pointer-events-none absolute left-1/4 top-1/4 h-72 w-72 -translate-x-1/2 -translate-y-1/2 rounded-full bg-signal/5 blur-3xl sm:h-96 sm:w-96" />
@@ -127,12 +142,9 @@ export default function Hero() {
             className="font-display text-[clamp(2.5rem,8vw,4.5rem)] font-semibold leading-[1.05]"
           >
             {headline.map((line) => (
-              <span key={line.text} className="reveal-line">
-                <motion.span
-                  variants={lineReveal}
-                  className={`block ${line.className}`}
-                >
-                  {line.text}
+              <span key={line.key} className="reveal-line">
+                <motion.span variants={lineReveal} className="block">
+                  {line.node}
                 </motion.span>
               </span>
             ))}
@@ -179,24 +191,15 @@ export default function Hero() {
             variants={heroItem}
             className="mt-8 flex flex-wrap items-center gap-3 sm:mt-12 sm:gap-4"
           >
+            {/* The sweep across this button used to be a Framer loop on
+                `repeat: Infinity`, which keeps a repaint scheduled for the
+                life of the page — the entire time the hero is scrolled away
+                included. `.btn-sweep` runs it once, on hover, in CSS. */}
             <MagneticLink
-              href="#projects"
-              className="glow-border group relative flex min-h-[44px] items-center overflow-hidden rounded-full border border-signal/30 bg-gradient-to-r from-signal/20 to-pulse/20 px-6 py-3 font-mono text-xs font-medium text-signal transition-colors duration-300 hover:from-signal/30 hover:to-pulse/30 sm:px-8 sm:py-3.5 sm:text-sm"
+              href="#playground"
+              className="btn-sweep glow-border group relative flex min-h-[44px] items-center rounded-full border border-signal/30 bg-gradient-to-r from-signal/20 to-pulse/20 px-6 py-3 font-mono text-xs font-medium text-signal transition-colors duration-300 hover:from-signal/30 hover:to-pulse/30 sm:px-8 sm:py-3.5 sm:text-sm"
             >
-              {!isLiteMotion && (
-                <motion.span
-                  aria-hidden="true"
-                  className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
-                  animate={{ x: ['-100%', '100%'] }}
-                  transition={{
-                    duration: 2,
-                    repeat: Infinity,
-                    repeatDelay: 3,
-                    ease: ease.inOut,
-                  }}
-                />
-              )}
-              <span className="relative z-10">View projects</span>
+              <span className="relative z-10">Try the playground</span>
             </MagneticLink>
 
             <MagneticLink

@@ -108,7 +108,12 @@ export default function Skills() {
         <SectionHeader
           index="03"
           eyebrow="skills_and_technologies"
-          title="Tools I reach for"
+          title={
+            <>
+              The tools I{' '}
+              <span className="accent-em text-gradient">reach for</span>
+            </>
+          }
           description="Split across the interface layer I ship with, and the systems layer I study underneath it."
         />
 

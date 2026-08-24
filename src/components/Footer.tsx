@@ -88,7 +88,7 @@ export default function Footer() {
         >
           <motion.div variants={fadeUp} className="flex items-center gap-3">
             <span className="section-index font-mono text-[10px] text-ink-faint sm:text-xs">
-              07
+              06
             </span>
             <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-signal sm:text-xs">
               // get_in_touch
@@ -106,8 +106,10 @@ export default function Footer() {
               variants={lineReveal}
               className="font-display text-[clamp(1.9rem,5.5vw,3rem)] font-semibold leading-[1.1]"
             >
-              Let&apos;s build
-              <span className="text-gradient"> something extraordinary</span>
+              Let&apos;s build{' '}
+              <span className="accent-em text-gradient">
+                something extraordinary
+              </span>
             </motion.h2>
           </span>
 

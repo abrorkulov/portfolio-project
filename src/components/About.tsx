@@ -48,8 +48,13 @@ export default function About() {
         <SectionHeader
           index="01"
           eyebrow="about_me"
-          title="A developer who reads the whole stack"
-          description="Sixteen, based in Tashkent, and equally interested in the pixel and the process that painted it."
+          title={
+            <>
+              A developer who reads the{' '}
+              <span className="accent-em text-gradient">whole stack</span>
+            </>
+          }
+          description="Based in Tashkent, and equally interested in the pixel and the process that painted it."
         />
 
         {/* At a glance — the facts a visitor scans for before reading prose. */}
