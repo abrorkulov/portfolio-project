@@ -1,1113 +1,1035 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-/* Fonts are linked from index.html with preconnect, so they start downloading
-   before this stylesheet is even parsed. An @import here would have queued
-   them behind the CSS and delayed first paint. */
-
 /* ---------------------------------------------------------------------------
-   Motion tiers
+   Black, milk and glass.
 
-   Expensive paint work — backdrop blur, animated gradients, huge blur radii,
-   pointer-tracked highlights — is gated on a media query rather than a class,
-   so it is correct on the very first frame with no JavaScript involved. The
-   query mirrors the primary conditions in `detectTier()`:
+   Two faces and one rule each:
+     Dancing Script  writes the word "Hello", and nothing else. It is the only
+                     handwriting on the site, so it has to stay rare.
+     Sora            everything else — titles, copy, labels, numbers.
 
-       @media (hover: hover) and (pointer: fine) and (min-width: 1024px)
-
-   `html[data-motion='lite']` is the second gate: `syncMotionTier()` sets it
-   before React mounts, and it covers the cases only JS can see (low device
-   memory, an OS reduced-motion preference). It carries more specificity than
-   the bare class selectors inside the media query, so it can always claw an
-   effect back off a machine that cannot afford it.
+   There is no accent colour anywhere. The palette is a single milky white
+   against pure black, and every surface is a different amount of that white.
 --------------------------------------------------------------------------- */
 
-@layer base {
-  html {
-    scroll-behavior: smooth;
-    -webkit-text-size-adjust: 100%;
-    /* Stops the rubber-band bounce revealing a white gutter behind the page
-       on iOS and Chrome Android. */
-    overscroll-behavior-y: none;
+:root {
+  --black: #000000;
+
+  /* Milk, not white. Pure #fff against pure black glares and reads cold; this
+     is the same off-white the snow is tinted with. */
+  --milk: #f4f0e8;
+  --milk-soft: #cfcabf;
+  --milk-muted: #8f8a80;
+  --milk-faint: #5c584f;
+
+  --glass: rgba(255, 255, 255, 0.062);
+  --glass-strong: rgba(255, 255, 255, 0.1);
+  --edge: rgba(255, 255, 255, 0.12);
+  --edge-strong: rgba(255, 255, 255, 0.22);
+
+  --font-script: 'Dancing Script', 'Segoe Script', cursive;
+  --font-sans: 'Sora', system-ui, -apple-system, sans-serif;
+
+  --shell: clamp(1.25rem, 5vw, 4rem);
+
+  color-scheme: dark;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  /* The deck parks its outer cards hundreds of pixels past the page, which
+     would otherwise widen the document. Vertical stays scrollable so a long
+     card on a short phone can never be cut off. */
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+body {
+  background: var(--black);
+  color: var(--milk);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  font-weight: 300;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overscroll-behavior-y: none;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+button:disabled {
+  cursor: default;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+  touch-action: manipulation;
+}
+
+h1,
+h2,
+h3,
+p,
+ul,
+ol {
+  margin: 0;
+}
+
+ul,
+ol {
+  padding: 0;
+  list-style: none;
+}
+
+::selection {
+  background: rgba(244, 240, 232, 0.85);
+  color: #000;
+}
+
+:focus-visible {
+  outline: 2px solid rgba(244, 240, 232, 0.8);
+  outline-offset: 3px;
+  border-radius: 8px;
+}
+
+/* ------------------------------------------------------------------- snow */
+
+.snow {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* Two tiled layers at different sizes and speeds. They paint on the first
+   frame and stay: this is the only snow a reduced-motion or software-rendered
+   visitor ever sees, and it gives the WebGL field something to fall in front
+   of while its chunk is still arriving. */
+.snow-static {
+  position: absolute;
+  inset: -20% 0;
+  opacity: 0.55;
+  background-image:
+    radial-gradient(1.5px 1.5px at 23px 41px, rgba(255, 255, 255, 0.9), transparent),
+    radial-gradient(1px 1px at 137px 96px, rgba(255, 255, 255, 0.65), transparent),
+    radial-gradient(1.2px 1.2px at 76px 173px, rgba(250, 248, 244, 0.75), transparent),
+    radial-gradient(1px 1px at 199px 27px, rgba(255, 255, 255, 0.55), transparent),
+    radial-gradient(1.8px 1.8px at 168px 214px, rgba(255, 255, 255, 0.6), transparent);
+  background-size: 240px 240px;
+  animation: snow-drift 34s linear infinite;
+}
+
+.snow-static-far {
+  opacity: 0.3;
+  background-size: 400px 400px;
+  animation-duration: 62s;
+  animation-direction: reverse;
+}
+
+@keyframes snow-drift {
+  from {
+    transform: translate3d(0, -240px, 0);
   }
-
-  body {
-    background-color: #09090b;
-    /* `text-rendering: optimizeLegibility` used to sit here. It asks the
-       browser to run full kerning and ligature shaping over every text node
-       on the page, which on a phone is paid during the first layout of a
-       document this long. The default is the right trade for body copy. */
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    /* Never let a stray wide child create a horizontal scrollbar on phones. */
-    overflow-x: hidden;
-  }
-
-  /* The atmosphere.
-
-     Three fixed layers sit under the whole document:
-
-       body::before   the colour field, drifting on the full tier
-       .page-veil     a light from above and a vignette, full tier only
-       body::after    film grain, full tier only
-
-     None of this was visible until now, and the reason is worth keeping.
-     The app wrapper carried `bg-void` â an opaque fill over the entire
-     document â and a positioned element paints above an earlier sibling's
-     fixed pseudo-element, so that one utility class hid the colour field
-     completely. The page was flat black with a handful of section-local
-     glows doing all the work. **The wrapper must stay transparent**; the
-     base colour belongs on `body`, which already sets it.
-
-     Painting on a fixed pseudo-element rather than on `body` itself is the
-     other half of it: `background-attachment: fixed` cannot be moved by the
-     compositor, so every scroll frame repaints the whole gradient stack
-     across the viewport. This is a layer the compositor simply slides. Do
-     not put it back on `body`. */
-  body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    z-index: 0;
-    pointer-events: none;
-    background-image:
-      radial-gradient(62% 46% at 8% 2%, rgba(94, 234, 212, 0.14), transparent 64%),
-      radial-gradient(56% 44% at 92% 0%, rgba(167, 139, 250, 0.16), transparent 62%),
-      radial-gradient(50% 40% at 84% 56%, rgba(125, 211, 252, 0.1), transparent 66%),
-      radial-gradient(58% 46% at 14% 72%, rgba(94, 234, 212, 0.09), transparent 68%),
-      radial-gradient(80% 54% at 50% 114%, rgba(217, 119, 87, 0.08), transparent 64%);
-    /* Its own compositor layer, so it is never rasterised again after the
-       first paint. */
-    transform: translateZ(0);
-  }
-
-  /* A broad light from above and a vignette below it.
-
-     Without these the colour field reads as an evenly tinted sheet. The light
-     gives the page a lit top edge to sit under; the vignette lets the corners
-     fall away so the column of content is where the eye settles.
-
-     It is a sibling of the particle canvas and paints after it, so the
-     constellation is dimmed toward the edges along with everything else â
-     which is the point. Full tier only, for the same reason as the grain: a
-     full-viewport layer is blended by the compositor on every scrolled frame,
-     and that is a cost a phone should not pay for depth it cannot see. */
-  .page-veil {
-    position: fixed;
-    inset: 0;
-    z-index: 0;
-    pointer-events: none;
-    background-image:
-      radial-gradient(92% 56% at 50% -10%, rgba(255, 255, 255, 0.055), transparent 58%),
-      radial-gradient(132% 104% at 50% 20%, transparent 40%, rgba(0, 0, 0, 0.55) 100%);
-    transform: translateZ(0);
-  }
-
-  /* A very fine grain over the whole page. Large flat dark surfaces band
-     badly on cheap panels and read as "empty"; noise this subtle isn't
-     consciously visible but gives the background material. */
-  body::after {
-    content: '';
-    position: fixed;
-    inset: 0;
-    z-index: 1;
-    pointer-events: none;
-    opacity: 0.035;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
-    transform: translateZ(0);
-  }
-
-  /* Headings track tighter than body copy at display sizes. */
-  h1,
-  h2,
-  h3 {
-    letter-spacing: -0.02em;
-    text-wrap: balance;
-  }
-
-  p {
-    text-wrap: pretty;
-  }
-
-  /* Media should never be able to push the page sideways. */
-  img,
-  svg,
-  canvas {
-    max-width: 100%;
-  }
-
-  ::selection {
-    background-color: rgba(94, 234, 212, 0.3);
-    color: #e6edf3;
-  }
-
-  ::-webkit-scrollbar {
-    width: 10px;
-  }
-  ::-webkit-scrollbar-track {
-    background: #09090b;
-  }
-  ::-webkit-scrollbar-thumb {
-    background: #23232b;
-    border: 2px solid #09090b;
-    border-radius: 999px;
-  }
-  ::-webkit-scrollbar-thumb:hover {
-    background: #2dd4bf88;
-  }
-
-  /* Firefox */
-  * {
-    scrollbar-color: #23232b #09090b;
-    scrollbar-width: thin;
-  }
-
-  *:focus-visible {
-    outline: 2px solid #5eead4;
-    outline-offset: 3px;
-    border-radius: 4px;
-  }
-
-  /* Fixed navbar clearance for anchor jumps. */
-  section[id],
-  footer[id] {
-    scroll-margin-top: 5.5rem;
-  }
-
-  /* Touch targets: anything tappable clears the 44px accessibility floor,
-     and taps don't flash a grey box on Android. */
-  button,
-  a,
-  input,
-  textarea,
-  select {
-    -webkit-tap-highlight-color: transparent;
-    /* Opts out of double-tap-to-zoom, which is what makes some Android
-       browsers hold a tap for ~300ms before firing it. */
-    touch-action: manipulation;
-  }
-
-  /* Inputs at <16px make iOS Safari zoom the whole page on focus. */
-  @media (max-width: 640px) {
-    input,
-    textarea,
-    select {
-      font-size: 16px;
-    }
+  to {
+    transform: translate3d(30px, 240px, 0);
   }
 }
 
-@layer components {
-  .grid-overlay {
-    background-image:
-      linear-gradient(to right, #1a1a1f33 1px, transparent 1px),
-      linear-gradient(to bottom, #1a1a1f33 1px, transparent 1px);
-    background-size: 64px 64px;
-    /* Fade the grid out toward the edges instead of cutting it off hard. */
-    -webkit-mask-image: radial-gradient(ellipse at center, #000 30%, transparent 78%);
-    mask-image: radial-gradient(ellipse at center, #000 30%, transparent 78%);
+.snow-gl {
+  position: absolute;
+  inset: 0;
+}
+
+.snow-gl canvas {
+  width: 100%;
+  height: 100%;
+}
+
+/* ------------------------------------------------------------------ shell */
+
+.app {
+  position: relative;
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+}
+
+.viewport {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100svh;
+  padding: clamp(3rem, 8vh, 5rem) var(--shell) clamp(7.5rem, 16vh, 10rem);
+}
+
+.stage {
+  width: 100%;
+  max-width: 1180px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  /* The page hand-off animates transform and opacity on this element; giving
+     it a layer up front stops the first frame of every change paying for the
+     promotion. */
+  will-change: transform, opacity;
+}
+
+/* ------------------------------------------------------------------- home */
+
+.home {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: clamp(2rem, 7vh, 4rem);
+}
+
+.home-hello {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  font-family: var(--font-script);
+  font-weight: 700;
+  font-size: clamp(5.5rem, 23vw, 18rem);
+  line-height: 1;
+  letter-spacing: 0.01em;
+  color: var(--milk);
+  /* The glow is what stops a single word on a black field reading as clip
+     art. Two radii: a tight one for the ink, a wide one for the room. */
+  text-shadow:
+    0 0 24px rgba(244, 240, 232, 0.28),
+    0 0 120px rgba(244, 240, 232, 0.14);
+  /* A script face overhangs its glyph box on both sides; without this the
+     capital H loses its entry stroke at the left edge on a narrow screen. */
+  padding: 0 0.12em;
+}
+
+.home-word {
+  animation: breathe-glow 6s ease-in-out infinite;
+}
+
+@keyframes breathe-glow {
+  0%,
+  100% {
+    opacity: 0.94;
   }
-
-  .text-gradient {
-    background: linear-gradient(135deg, #99f6e4, #5eead4 50%, #a78bfa);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-  }
-
-  .text-gradient-warm {
-    background: linear-gradient(135deg, #f472b6, #a78bfa 50%, #818cf8);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-  }
-
-  .text-gradient-cool {
-    background: linear-gradient(135deg, #99f6e4, #5eead4 55%, #2dd4bf);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-  }
-
-  .text-gradient-sunset {
-    background: linear-gradient(135deg, #fbbf24, #f97316 50%, #ef4444);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-  }
-
-  .text-gradient-ocean {
-    background: linear-gradient(135deg, #a5d8ff, #60a5fa 50%, #818cf8);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-  }
-
-  /* Gradient type with a highlight that drifts along it. The animation moves
-     `background-position`, which repaints the glyphs every frame — cheap for
-     one headline, ruinous for a grid. Full tier only, and never more than a
-     couple of elements on screen. */
-  .text-sheen {
-    background: linear-gradient(
-      100deg,
-      #99f6e4 0%,
-      #5eead4 22%,
-      #ffffff 38%,
-      #a78bfa 55%,
-      #5eead4 78%,
-      #99f6e4 100%
-    );
-    background-size: 220% 100%;
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-  }
-
-  /* Horizontal overflow guard for the page wrapper.
-
-     This was `overflow-x: hidden`, and that quietly broke every
-     `position: sticky` on the page. `overflow-x: hidden` on a real element
-     forces the other axis from `visible` to `auto`, which makes the element a
-     scroll container — and a scroll container that never actually scrolls is
-     a scrollport a sticky child pins to and then rides away with. The
-     journey's year panel is the first thing on this page that needed to pin,
-     which is why nobody had noticed.
-
-     `clip` clips identically without creating a scroll container. The
-     `hidden` line above it is the fallback for browsers that predate it
-     (Safari < 16); they lose sticky, not layout.
-
-     `body` keeps `overflow-x: hidden` and is fine: the body's overflow
-     propagates to the viewport, so the body itself stays `visible`. */
-  .clip-x {
-    overflow-x: hidden;
-    overflow-x: clip;
-  }
-
-  /* Base card. No backdrop blur here: on a phone every blurred surface makes
-     the compositor re-read the pixels behind it on every frame it moves, and
-     this page can have a dozen of them on screen at once. The translucency is
-     faked with a slightly lighter fill, which against a near-black background
-     is indistinguishable. The real thing is restored under the full tier. */
-  .glass-card {
-    background: rgba(17, 17, 21, 0.82);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    /* Top inner highlight + drop shadow reads as a lit edge, which is what
-       separates the card from the background on a near-black page. */
-    box-shadow:
-      inset 0 1px 0 0 rgba(255, 255, 255, 0.06),
-      0 8px 32px rgba(0, 0, 0, 0.35);
-  }
-
-  .glass-border {
-    border: 1px solid rgba(255, 255, 255, 0.08);
-  }
-
-  /* Section separator. A plain border-t runs edge to edge and chops the page
-     into hard slabs; this fades out toward both margins. */
-  .section-rule {
-    position: relative;
-  }
-
-  .section-rule::before {
-    content: '';
-    position: absolute;
-    inset-inline: 0;
-    top: 0;
-    height: 1px;
-    background: linear-gradient(
-      to right,
-      transparent,
-      rgba(255, 255, 255, 0.09) 15%,
-      rgba(94, 234, 212, 0.28) 50%,
-      rgba(255, 255, 255, 0.09) 85%,
-      transparent
-    );
-  }
-
-  /* A soft bloom sitting where the rule is brightest, so the seam between two
-     sections reads as a light source rather than a line. */
-  .section-rule::after {
-    content: '';
-    position: absolute;
-    top: -70px;
-    left: 50%;
-    height: 140px;
-    width: min(680px, 80vw);
-    transform: translateX(-50%);
-    pointer-events: none;
-    background: radial-gradient(
-      ellipse at center,
-      rgba(94, 234, 212, 0.08),
-      transparent 68%
-    );
-  }
-
-  /* Numbered section index used by SectionHeader. */
-  .section-index {
-    font-variant-numeric: tabular-nums;
-  }
-
-  /* Inset editor/console surface shared by the playground widgets. */
-  .inset-surface {
-    background: rgba(9, 9, 11, 0.72);
-    border: 1px solid rgba(255, 255, 255, 0.06);
-    box-shadow: inset 0 1px 0 0 rgba(0, 0, 0, 0.4);
-  }
-
-  /* Gradient hairline that fades in on hover, drawn with a mask so it hugs
-     whatever border-radius the element already has. */
-  .glow-border {
-    position: relative;
-  }
-
-  .glow-border::before {
-    content: '';
-    position: absolute;
-    inset: -1px;
-    border-radius: inherit;
-    padding: 1px;
-    background: linear-gradient(135deg, rgba(94, 234, 212, 0.35), rgba(167, 139, 250, 0.35));
-    -webkit-mask:
-      linear-gradient(#fff 0 0) content-box,
-      linear-gradient(#fff 0 0);
-    mask:
-      linear-gradient(#fff 0 0) content-box,
-      linear-gradient(#fff 0 0);
-    -webkit-mask-composite: xor;
-    mask-composite: exclude;
-    opacity: 0;
-    transition: opacity 0.3s ease;
-    pointer-events: none;
-  }
-
-  .glow-border:hover::before {
+  50% {
     opacity: 1;
   }
-
-  /* Wrapper for a line of type that wipes up from behind its own baseline.
-     Pair with the `lineReveal` variant. */
-  .reveal-line {
-    display: block;
-    overflow: hidden;
-    /* Descenders sit below the baseline and a hard overflow clip shears them
-       off; the extra room is reclaimed with a matching negative margin. */
-    padding-bottom: 0.14em;
-    margin-bottom: -0.14em;
-  }
-
-  /* Surfaces that respond to the cursor.
-
-     These used to carry a 340px radial highlight that followed the pointer
-     around the card — a soft circular pool of light that faded in on hover.
-     It was too heavy: it read as a spotlight sitting on top of the design
-     rather than as the card reacting, and it meant `useTilt` writing two
-     pointer coordinates onto the element on every frame of every hover.
-
-     What replaced it is a hairline: on hover the card's edge picks up a thin
-     accent ring and its top highlight brightens a little. No pool of light, no
-     per-frame custom properties — one `box-shadow` transition the compositor
-     handles on its own.
-
-     Two flavours, and the difference still matters. `.tilt-glow` changes only
-     the edge, so it is safe on an element Framer Motion is animating.
-     `.tilt-surface` also tips the card, which means it owns `transform` — put
-     it on an element Framer is not touching, or the inline transform Framer
-     writes will silently win. */
-  .tilt-glow,
-  .tilt-surface {
-    --rx: 0deg;
-    --ry: 0deg;
-    position: relative;
-    transition: box-shadow 0.35s ease;
-  }
-
-  .tilt-surface {
-    --lift: 0px;
-    transition:
-      transform 0.4s cubic-bezier(0.22, 1, 0.36, 1),
-      box-shadow 0.35s ease;
-  }
-
-  /* A specular streak that crosses the card once on hover — glass catching
-     the light. It is the detail that separates "dark card" from "expensive
-     dark card". */
-  .card-sheen {
-    position: relative;
-    overflow: hidden;
-  }
-
-  .card-sheen::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    left: -60%;
-    width: 45%;
-    pointer-events: none;
-    transform: skewX(-18deg);
-    background: linear-gradient(
-      90deg,
-      transparent,
-      rgba(255, 255, 255, 0.07),
-      transparent
-    );
-    opacity: 0;
-  }
-
-  /* Skill cards tint their own halo from the brand colour each card sets
-     as --brand, so the grid picks up React blue, Docker blue, Ubuntu orange
-     and so on instead of one flat accent. */
-  .skill-card {
-    --brand: #5eead4;
-  }
-
-  /* Was a radial wash of the brand colour blooming up behind the whole card.
-     It is now a hairline along the top edge in the same colour — the card
-     still identifies itself as React blue or Ubuntu orange, without a coloured
-     cloud appearing under the text. */
-  .skill-card::before {
-    content: '';
-    position: absolute;
-    inset-inline: 0;
-    top: 0;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, var(--brand), transparent);
-    opacity: 0;
-    transition: opacity 0.35s ease;
-    pointer-events: none;
-  }
-
-  .skill-card:hover::before,
-  .skill-card:focus-within::before {
-    opacity: 0.85;
-  }
-
-  /* -------------------------------------------------------------------------
-     Editorial accent — Instrument Serif
-
-     The page is set in three technical faces: a geometric display, a neutral
-     sans and a mono. That is coherent but flat, because nothing on it has a
-     different voice. One high-contrast serif italic, used for exactly one
-     phrase per heading, is what turns a list of headings into typography.
-
-     Rules for using it: italic only, one phrase per line, and never for body
-     copy — its 400 is far too fine at 15px on a near-black background.
-  ------------------------------------------------------------------------- */
-  .accent-em {
-    font-family: 'Instrument Serif', Georgia, serif;
-    font-style: italic;
-    font-weight: 400;
-    /* Instrument Serif's x-height sits well under Space Grotesk's, so at a
-       shared font-size the emphasis reads as a word that fell out of the
-       line. The nudge puts the two back on the same optical weight. */
-    font-size: 1.1em;
-    letter-spacing: 0;
-    /* An italic's top-right terminal overhangs its glyph box, and
-       `background-clip: text` crops to that box — without the padding the
-       final letter loses its tail wherever the accent sits in a gradient. */
-    padding-right: 0.06em;
-  }
-
-  /* Display numerals — the years on the journey rail. Tabular figures matter
-     here: the year swaps between milestones, and proportional digits would
-     shift the whole numeral sideways on every change. */
-  .display-numeral {
-    font-family: 'Instrument Serif', Georgia, serif;
-    font-weight: 400;
-    line-height: 0.82;
-    letter-spacing: -0.02em;
-    font-variant-numeric: lining-nums tabular-nums;
-  }
-
-  /* A dot field, as an alternative texture to `.grid-overlay`'s ruled lines.
-     Static, one paint, and it gives a section a floor to sit on. */
-  .dot-grid {
-    background-image: radial-gradient(
-      rgba(255, 255, 255, 0.11) 1px,
-      transparent 1px
-    );
-    background-size: 22px 22px;
-    -webkit-mask-image: radial-gradient(ellipse at center, #000 10%, transparent 72%);
-    mask-image: radial-gradient(ellipse at center, #000 10%, transparent 72%);
-  }
-
-  /* The journey spine. A hairline that fades in at the top and out at the
-     bottom, so the rail has no hard ends to explain. */
-  .journey-spine {
-    background: linear-gradient(
-      to bottom,
-      transparent,
-      rgba(255, 255, 255, 0.14) 8%,
-      rgba(255, 255, 255, 0.14) 84%,
-      transparent
-    );
-  }
-
-  /* One light travelling the rail, tinted by the milestone it has reached.
-     Driven by `scaleY` from a top origin — animating `height` would relayout
-     the whole column on every frame of the scroll. */
-  .journey-trace {
-    background: linear-gradient(
-      to bottom,
-      var(--trace-from, #5eead4),
-      var(--trace-to, #a78bfa)
-    );
-    transform-origin: top;
-  }
-
-  /* A sweep that crosses a button once, on hover.
-
-     The hero call-to-action used to run this as a Framer loop on
-     `repeat: Infinity` with a 3s delay, which keeps a repaint scheduled for
-     the life of the page — including the entire time the hero is scrolled
-     away. On hover only, in CSS, it costs nothing until someone reaches for
-     the button. */
-  .btn-sweep {
-    position: relative;
-    overflow: hidden;
-  }
-
-  .btn-sweep::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    transform: translateX(-120%);
-    background: linear-gradient(
-      100deg,
-      transparent 25%,
-      rgba(255, 255, 255, 0.22) 50%,
-      transparent 75%
-    );
-  }
-
-  /* -------------------------------------------------------------------------
-     The journey deck — the desktop learning journey.
-
-     This replaced a scroll-driven version: a ~500vh track with a pinned stage
-     that flew a camera down a corridor. It looked good and it read badly. Tying
-     a scene to the scrollbar means the reader cannot leave it without watching
-     the whole thing, cannot go back a step without scrolling up, and cannot
-     scroll past the section at their own pace — the page stops being theirs.
-     Do not reintroduce a scroll-linked stage here.
-
-     The deck is the same 3D depth with the scroll taken out. Five milestones
-     stand on an arc facing the reader; the front one is square on and legible,
-     its neighbours are turned inward and pushed back. Arrows, the year buttons,
-     the arrow keys and a horizontal drag all move the same spring. The section
-     is one screen tall and scrolls past like any other.
-
-     Two rules carried over from the version before it, both still load-bearing:
-
-     - `transform-style: preserve-3d` on `.deck-stage` is what makes the browser
-       depth-sort the cards. Without it a `perspective` parent still places its
-       children in 3D but paints them in DOM order, so the card two steps back
-       draws over the one at the front.
-     - Anything that is not part of the scene — the ambient glow, the floor, the
-       edge fade — must be a sibling of the stage, never a child. A plain child
-       of a `preserve-3d` element sits at `z: 0` and occludes every card behind
-       it.
-  ------------------------------------------------------------------------- */
-  .deck-stage {
-    position: absolute;
-    inset: 0;
-    perspective: 1200px;
-    perspective-origin: 50% 48%;
-    transform-style: preserve-3d;
-    /* The drag is a pointer gesture on the horizontal axis; letting the browser
-       also treat it as a pan would fight it on trackpads and touch screens. */
-    touch-action: pan-y;
-  }
-
-  .deck-layer {
-    position: absolute;
-    inset: 0;
-    display: grid;
-    place-items: center;
-  }
-
-  .deck-card {
-    width: min(520px, 76vw);
-    border-radius: 22px;
-    padding: 1.35rem;
-    /* An opaque fill, not `.glass-card`. Backdrop blur inside a subtree that is
-       rotated and scaled by a spring is the one place on this page the
-       compositor genuinely cannot afford it. */
-    background: linear-gradient(160deg, #16161c, #0b0b0f);
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.1),
-      0 0 0 1px var(--ring, rgba(255, 255, 255, 0.09)),
-      0 44px 110px -44px rgba(0, 0, 0, 0.95),
-      0 0 80px -34px var(--glow, transparent);
-    transition: box-shadow 0.45s ease;
-  }
-
-  @media (min-width: 640px) {
-    .deck-card {
-      border-radius: 26px;
-      padding: 1.75rem;
-    }
-  }
-
-  .deck-card-idle {
-    cursor: pointer;
-  }
-
-  /* The year standing behind the deck. */
-  .deck-year {
-    font-family: 'Instrument Serif', Georgia, serif;
-    font-size: clamp(10rem, 30vw, 24rem);
-    line-height: 0.8;
-    letter-spacing: -0.03em;
-    font-variant-numeric: lining-nums tabular-nums;
-    white-space: nowrap;
-  }
-
-  /* The stage's ambient light. Sized and positioned here; the colour arrives
-     inline, as a radial gradient built from the milestone at the front.
-
-     It used to be a solid fill under `filter: blur(90px)`, which meant
-     re-rasterising a 700x400 surface on every change of card. A gradient gives
-     the same soft falloff for no filter cost at all â which matters now that
-     this renders on phones too. */
-  .deck-glow {
-    position: absolute;
-    left: 50%;
-    top: 44%;
-    height: min(400px, 74%);
-    width: min(700px, 96%);
-    transform: translate(-50%, -50%);
-    opacity: 0.16;
-    pointer-events: none;
-  }
-
-
-  /* Ground under the deck, so the cards are standing on something. */
-  .deck-floor {
-    position: absolute;
-    bottom: 4%;
-    left: 50%;
-    height: 130px;
-    width: min(900px, 92%);
-    transform: translateX(-50%);
-    pointer-events: none;
-    background: radial-gradient(
-      ellipse at center,
-      rgba(255, 255, 255, 0.06),
-      transparent 70%
-    );
-  }
-
-  /* The deck's viewport. Its only job is to fade the outermost cards out at
-     the left and right edges of the deck.
-
-     This has to be a mask, not an overlay. It used to be a strip painted with
-     the page's background colour down either side, which worked only for as
-     long as the page background really was that one flat colour. The moment
-     the colour field behind it became a tinted, vignetted gradient, the strip
-     showed up as exactly what it was: a hard-edged grey rectangle sitting on
-     top of the page. A mask removes pixels instead of covering them, so
-     whatever is behind shows through untouched.
-
-     Two reasons it is its own element rather than a property on the stage:
-
-     - A mask forces `transform-style` back to `flat`, so masking `.deck-stage`
-       itself would collapse the 3D scene.
-     - It must not wrap the arrows, which sit exactly where the mask fades out.
-
-     `mask-repeat: no-repeat` matters. Left at the default the gradient tiles,
-     and a card that has travelled outside the box meets a fresh opaque copy
-     of it instead of staying hidden. */
-  .deck-viewport {
-    position: absolute;
-    inset: 0;
-    -webkit-mask-image: linear-gradient(
-      to right,
-      transparent 0%,
-      #000 9%,
-      #000 91%,
-      transparent 100%
-    );
-    mask-image: linear-gradient(
-      to right,
-      transparent 0%,
-      #000 9%,
-      #000 91%,
-      transparent 100%
-    );
-    -webkit-mask-repeat: no-repeat;
-    mask-repeat: no-repeat;
-    -webkit-mask-size: 100% 100%;
-    mask-size: 100% 100%;
-  }
-
-  .deck-arrow {
-    display: grid;
-    height: 48px;
-    width: 48px;
-    place-items: center;
-    border-radius: 9999px;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    background: rgba(9, 9, 11, 0.72);
-    color: #7c8b9c;
-    transition:
-      color 0.25s ease,
-      border-color 0.25s ease,
-      background-color 0.25s ease;
-  }
-
-  .deck-arrow:hover:not(:disabled) {
-    color: #e6edf3;
-    border-color: rgba(94, 234, 212, 0.45);
-    background: rgba(94, 234, 212, 0.1);
-  }
-
-  .deck-arrow:disabled {
-    opacity: 0.3;
-    cursor: not-allowed;
-  }
-
-  /* The AI section's warm wash. Two static radial gradients on one promoted
-     layer, not a stack of blurred divs — a 300px blur radius is the single
-     most expensive filter a phone can be handed, and this reads identically. */
-  .ai-ambient {
-    position: absolute;
-    inset: 0;
-    z-index: 0;
-    pointer-events: none;
-    background-image:
-      radial-gradient(58% 44% at 16% 10%, rgba(217, 119, 87, 0.13), transparent 72%),
-      radial-gradient(52% 48% at 88% 82%, rgba(217, 119, 87, 0.08), transparent 72%);
-    transform: translateZ(0);
-  }
-
-  /* Form field.
-
-     The contact inputs used to drive their focus state through React: a
-     `focusedField` string in state, animated by Framer across `borderColor`,
-     `backgroundColor` and `boxShadow`. That is a component re-render and a
-     JS-driven repaint for something `:focus-within` already describes, so it
-     now lives entirely in CSS. */
-  .field {
-    position: relative;
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    border-radius: 0.875rem;
-    border: 1px solid rgba(255, 255, 255, 0.09);
-    background: rgba(255, 255, 255, 0.03);
-    padding-inline: 0.95rem;
-    transition:
-      border-color 0.25s ease,
-      background-color 0.25s ease,
-      box-shadow 0.25s ease;
-  }
-
-  /* A textarea's icon belongs on the first line, not floating at its centre. */
-  .field-start {
-    align-items: flex-start;
-  }
-
-  .field:focus-within {
-    border-color: rgba(94, 234, 212, 0.45);
-    background: rgba(255, 255, 255, 0.05);
-    box-shadow: 0 0 0 3px rgba(94, 234, 212, 0.1);
-  }
-
-  .field > svg {
-    flex-shrink: 0;
-    color: #48556a;
-    transition: color 0.25s ease;
-  }
-
-  .field-start > svg {
-    margin-top: 1rem;
-  }
-
-  .field:focus-within > svg {
-    color: #5eead4;
-  }
-
-  .field input,
-  .field textarea {
-    flex: 1 1 auto;
-    min-width: 0;
-    border: 0;
-    background: transparent;
-    padding-block: 0.85rem;
-    color: #e6edf3;
-    /* The field's own ring is the focus affordance; a second outline inside it
-       just draws a box around a box. */
-    outline: none;
-  }
-
-  .field input::placeholder,
-  .field textarea::placeholder {
-    color: rgba(124, 139, 156, 0.55);
-  }
-
-  .field textarea {
-    resize: none;
-  }
-
-  /* Primary action button. The gradient is static: the old one ran a Framer
-     sweep on `repeat: Infinity`, which kept a repaint scheduled for the life
-     of the page — including the whole time the footer was off-screen. */
-  .btn-primary {
-    position: relative;
-    display: inline-flex;
-    min-height: 52px;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    border-radius: 0.875rem;
-    background-image: linear-gradient(120deg, #99f6e4, #5eead4 45%, #a78bfa);
-    color: #09090b;
-    font-weight: 600;
-    transition:
-      box-shadow 0.25s ease,
-      filter 0.25s ease,
-      transform 0.15s ease;
-  }
-
-  .btn-primary:hover:not(:disabled) {
-    box-shadow: 0 14px 36px -14px rgba(94, 234, 212, 0.6);
-    filter: brightness(1.06);
-  }
-
-  .btn-primary:active:not(:disabled) {
-    transform: translateY(1px);
-  }
-
-  .btn-primary:disabled {
-    cursor: not-allowed;
-    opacity: 0.55;
-  }
-
-  /* Visually hidden but still announced by screen readers. */
-  .sr-only {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-    border-width: 0;
-  }
-
-  /* Horizontal scrollers (the skills filter row) shouldn't show a bar. */
-  .scrollbar-none {
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-  }
-
-  .scrollbar-none::-webkit-scrollbar {
-    display: none;
-  }
-
-  /* Keeps fixed UI clear of the iPhone home indicator. */
-  .safe-bottom {
-    padding-bottom: env(safe-area-inset-bottom, 0px);
-  }
-
-  .skeleton-shimmer {
-    background: linear-gradient(
-      90deg,
-      rgba(255, 255, 255, 0.03) 25%,
-      rgba(94, 234, 212, 0.08) 50%,
-      rgba(255, 255, 255, 0.03) 75%
-    );
-    background-size: 200% 100%;
-    animation: cyber-shimmer 2s infinite ease-in-out;
-  }
 }
 
-/* ---------------------------------------------------------------------------
-   Full tier — pointer device, wide viewport. Everything below is opt-in
-   decoration a phone never has to rasterise.
---------------------------------------------------------------------------- */
-@media (hover: hover) and (pointer: fine) and (min-width: 1024px) {
-  /* Real frosted glass, restored where the GPU can afford it. */
-  .glass-card {
-    background: rgba(15, 15, 18, 0.55);
-    backdrop-filter: blur(14px) saturate(140%);
-    -webkit-backdrop-filter: blur(14px) saturate(140%);
-  }
-
-  /* Slow drift on the ambient wash. Transform only, on a layer that is already
-     promoted, so it animates entirely on the compositor. */
-  body::before {
-    animation: aurora-drift 34s ease-in-out infinite alternate;
-  }
-
-  .text-sheen {
-    animation: sheen-sweep 7s ease-in-out infinite;
-  }
-
-  /* The hover lift lives in the same transform as the tilt. Framer used to own
-     it as a `whileHover` spring, which meant a gesture listener on every card
-     and two systems writing the same property. */
-  .tilt-surface {
-    transform: perspective(1100px) translate3d(0, var(--lift), 0)
-      rotateX(var(--rx)) rotateY(var(--ry));
-  }
-
-  .tilt-surface:hover {
-    --lift: -6px;
-  }
-
-  /* The subtle hover: a 1px accent ring and a slightly stronger lit edge. */
-  .tilt-glow:hover,
-  .tilt-surface:hover {
-    box-shadow:
-      inset 0 1px 0 0 rgba(255, 255, 255, 0.12),
-      0 0 0 1px rgba(94, 234, 212, 0.2),
-      0 14px 34px -20px rgba(0, 0, 0, 0.75);
-  }
-
-  .btn-sweep:hover::after {
-    animation: sweep-across 0.85s cubic-bezier(0.22, 1, 0.36, 1);
-  }
-
-  .card-sheen:hover::before {
-    opacity: 1;
-    animation: sheen-cross 0.9s cubic-bezier(0.22, 1, 0.36, 1);
-  }
+.home-smile {
+  margin-left: 0.12em;
+  font-size: 0.72em;
+  color: var(--milk-soft);
+  opacity: 0;
+  transform: scale(0.35) rotate(-28deg);
+  transform-origin: 50% 60%;
+  transition:
+    opacity 0.45s ease,
+    transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-/* ---------------------------------------------------------------------------
-   Lite tier — set by `syncMotionTier()` before first paint. Covers the phones
-   the media query already caught, plus the machines only JavaScript can spot:
-   low device memory, few cores, or an OS reduced-motion preference.
---------------------------------------------------------------------------- */
-html[data-motion='lite'] .glass-card {
-  background: rgba(17, 17, 21, 0.82);
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-}
-
-html[data-motion='lite'] body::before,
-html[data-motion='lite'] .text-sheen {
-  animation: none;
-}
-
-/* The grain is a full-viewport layer stacked above every scrolling pixel, so
-   the compositor blends it on each frame for the whole page. It exists to stop
-   banding on large flat darks — which is a desktop-monitor problem. Phones
-   drop it entirely. */
-html[data-motion='lite'] body::after,
-html[data-motion='lite'] .page-veil {
-  display: none;
-}
-
-html[data-motion='lite'] .tilt-surface {
+.home-smile.is-in {
+  opacity: 1;
   transform: none;
 }
 
-html[data-motion='lite'] .card-sheen::before {
-  display: none;
+.home-cta,
+.about-next {
+  opacity: 0;
+  transform: translateY(26px);
+  transition:
+    opacity 0.6s ease 0.2s,
+    transform 0.75s cubic-bezier(0.22, 1, 0.36, 1) 0.2s;
 }
 
-/* ---------------------------------------------------------------------------
-   Lite tier, continued: no animation at all.
-
-   The JS vocabulary in `src/lib/motion.ts` goes inert on this tier, and this
-   is the other half of the same decision — the CSS keyframes that were still
-   running regardless: the pinging availability dots, the blinking cursors, the
-   spinning fallback rings, the shimmer on a skeleton. Each one keeps a phone's
-   compositor awake for decoration nobody asked for.
-
-   `.animate-spin` is exempt because it is the only one that carries meaning:
-   it says a lazy chunk is still loading.
---------------------------------------------------------------------------- */
-html[data-motion='lite'] *,
-html[data-motion='lite'] *::before,
-html[data-motion='lite'] *::after {
-  animation: none !important;
+.home-cta.is-in,
+.about-next.is-in {
+  opacity: 1;
+  transform: none;
 }
 
-html[data-motion='lite'] .animate-spin {
-  animation: spin 1s linear infinite !important;
+.caret {
+  display: inline-block;
+  width: 3px;
+  height: 0.72em;
+  margin-left: 0.06em;
+  background: var(--milk);
+  animation: blink 1.05s steps(1) infinite;
 }
 
-/* Skip layout, style and paint for sections that are nowhere near the
-   viewport. On a page this long that is most of them at any moment, and it is
-   the single largest rendering win available on a phone.
-   
-   `auto` in `contain-intrinsic-size` means "remember the real height once you
-   have measured it", which is what stops the scrollbar jumping around as the
-   reader moves down the page. The hero is excluded — it is the first paint. */
-html[data-motion='lite'] main > section:not(#top),
-html[data-motion='lite'] main > div > section:not(#top),
-html[data-motion='lite'] footer[id] {
-  content-visibility: auto;
-  contain-intrinsic-size: auto 900px;
+.caret-hello {
+  width: 6px;
+  height: 0.6em;
+  border-radius: 3px;
+  box-shadow: 0 0 22px rgba(244, 240, 232, 0.8);
 }
 
-/* `content-visibility` implies paint containment, which clips to the border
-   box — and the seam bloom is drawn 70px above its section's top edge. Tucked
-   inside, it survives the clip. */
-html[data-motion='lite'] .section-rule::after {
-  top: 0;
-  height: 90px;
-}
-
-@keyframes cyber-shimmer {
-  0% {
-    background-position: -200% 0;
+@keyframes blink {
+  0%,
+  49% {
+    opacity: 1;
   }
+  50%,
   100% {
-    background-position: 200% 0;
+    opacity: 0;
   }
 }
 
-/* A barely-there wander on the background wash — enough that the page is never
-   quite static, small enough that nobody consciously notices it. */
-@keyframes aurora-drift {
-  0% {
-    transform: translate3d(0, 0, 0) scale(1);
-  }
-  50% {
-    transform: translate3d(-2.5%, 1.5%, 0) scale(1.06);
-  }
-  100% {
-    transform: translate3d(2%, -1.5%, 0) scale(1.03);
-  }
+/* ---------------------------------------------------------------- buttons */
+
+.press-me,
+.glow-pill {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.9rem;
+  min-height: 56px;
+  padding: 0 1.9rem;
+  border-radius: 999px;
+  border: 1px solid var(--edge);
+  background: var(--glass);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+  font-family: var(--font-sans);
+  font-weight: 400;
+  font-size: 0.88rem;
+  letter-spacing: 0.24em;
+  text-transform: lowercase;
+  color: var(--milk);
+  overflow: hidden;
+  transition:
+    border-color 0.4s ease,
+    background-color 0.4s ease,
+    box-shadow 0.45s ease,
+    transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-@keyframes sheen-sweep {
+.press-me {
+  letter-spacing: 0.18em;
+  animation: pulse-ring 3.6s ease-in-out infinite;
+}
+
+/* One pass of light across the button on hover, in CSS. As a JS loop this
+   keeps a repaint scheduled for the life of the page, off-screen included. */
+.press-me::after,
+.glow-pill::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-130%);
+  background: linear-gradient(
+    100deg,
+    transparent 20%,
+    rgba(255, 255, 255, 0.28) 50%,
+    transparent 80%
+  );
+}
+
+.press-me:hover::after,
+.glow-pill:hover:not(:disabled)::after {
+  transition: transform 0.8s ease;
+  transform: translateX(130%);
+}
+
+.press-me:hover,
+.glow-pill:hover:not(:disabled) {
+  border-color: var(--edge-strong);
+  background: var(--glass-strong);
+  transform: translateY(-3px);
+  box-shadow: 0 0 46px -10px rgba(244, 240, 232, 0.55);
+}
+
+.press-me:active,
+.glow-pill:active:not(:disabled) {
+  transform: translateY(-1px) scale(0.98);
+}
+
+@keyframes pulse-ring {
   0%,
   100% {
-    background-position: 120% 50%;
+    box-shadow: 0 0 0 0 rgba(244, 240, 232, 0.14);
   }
-  55% {
-    background-position: -20% 50%;
-  }
-}
-
-@keyframes sweep-across {
-  from {
-    transform: translateX(-120%);
-  }
-  to {
-    transform: translateX(120%);
+  50% {
+    box-shadow: 0 0 34px -6px rgba(244, 240, 232, 0.4);
   }
 }
 
-@keyframes sheen-cross {
-  from {
-    transform: translateX(0) skewX(-18deg);
+.glow-pill-mark {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+}
+
+.glow-pill svg {
+  width: 20px;
+  height: 20px;
+  transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.glow-pill:hover:not(:disabled) svg {
+  transform: translateY(3px) rotate(90deg);
+}
+
+.glow-round {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  border: 1px solid var(--edge);
+  background: var(--glass);
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
+  color: var(--milk);
+  transition:
+    border-color 0.35s ease,
+    background-color 0.35s ease,
+    box-shadow 0.4s ease,
+    transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.35s ease;
+}
+
+.glow-round svg {
+  width: 19px;
+  height: 19px;
+}
+
+.glow-round:hover:not(:disabled) {
+  border-color: var(--edge-strong);
+  background: var(--glass-strong);
+  transform: scale(1.08);
+  box-shadow: 0 0 36px -10px rgba(244, 240, 232, 0.6);
+}
+
+.glow-round:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+.glow-round:disabled {
+  opacity: 0.18;
+}
+
+/* ------------------------------------------------------------------ about */
+
+.about {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: clamp(2.5rem, 7vh, 4rem);
+}
+
+.about-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.about-line {
+  font-weight: 200;
+  font-size: clamp(1.15rem, 3.4vw, 2.35rem);
+  line-height: 1.6;
+  letter-spacing: -0.02em;
+  color: var(--milk);
+  /* Every line holds its row from the start, so nothing under the block walks
+     down the screen as the text fills in. */
+  min-height: 1.6em;
+}
+
+/* ------------------------------------------------------------- page chrome */
+
+.scene {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(2rem, 5vh, 3.25rem);
+}
+
+.scene-block {
+  /* A direct child of `.scene` is a flex item under `align-items: center`, so
+     it shrinks to its content unless it says otherwise. */
+  width: 100%;
+}
+
+.scene-header {
+  width: 100%;
+  text-align: center;
+}
+
+.scene-eyebrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.9rem;
+  font-size: 0.68rem;
+  font-weight: 400;
+  letter-spacing: 0.42em;
+  text-transform: uppercase;
+  color: var(--milk-faint);
+}
+
+.scene-index {
+  color: var(--milk-muted);
+}
+
+.scene-rule {
+  width: clamp(28px, 6vw, 70px);
+  height: 1px;
+  background: linear-gradient(to right, transparent, var(--edge-strong), transparent);
+}
+
+.scene-title {
+  margin-top: 0.85rem;
+  font-weight: 200;
+  font-size: clamp(2rem, 6vw, 3.9rem);
+  line-height: 1.1;
+  letter-spacing: -0.045em;
+  color: var(--milk);
+}
+
+.scene-foot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.scene-signoff {
+  font-size: 0.76rem;
+  letter-spacing: 0.2em;
+  color: var(--milk-faint);
+}
+
+/* ------------------------------------------------------------------- deck */
+
+.deck {
+  position: relative;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.deck-row {
+  position: relative;
+  width: 100%;
+}
+
+/* No mask and no filter anywhere above the cards: `backdrop-filter` samples
+   the nearest backdrop root, and either one becomes one — the glass would
+   frost its own empty box instead of the snow behind it. */
+.deck-viewport {
+  position: relative;
+  width: 100%;
+  perspective: 1600px;
+}
+
+.deck-stage {
+  position: relative;
+  /* Replaced by the measured height of the tallest card as soon as the deck
+     mounts; this is only what it looks like for the first frame. */
+  height: clamp(320px, 44vh, 420px);
+  /* Without this a perspective parent still places its children in 3D but
+     paints them in DOM order, so the card two steps back draws over the one
+     in front. */
+  transform-style: preserve-3d;
+  touch-action: pan-y;
+  cursor: grab;
+}
+
+.deck-stage:active {
+  cursor: grabbing;
+}
+
+.deck-card {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: min(780px, 84vw);
+}
+
+/* Wet glass. The blur is real — it samples the snow falling behind the card,
+   so the field softens and smears as it passes underneath. */
+.deck-face {
+  position: relative;
+  padding: clamp(1.6rem, 3.6vw, 2.9rem);
+  border-radius: 30px;
+  border: 1px solid var(--edge);
+  background: linear-gradient(
+    150deg,
+    rgba(255, 255, 255, 0.09),
+    rgba(255, 255, 255, 0.028) 55%,
+    rgba(255, 255, 255, 0.05)
+  );
+  -webkit-backdrop-filter: blur(30px) saturate(120%);
+  backdrop-filter: blur(30px) saturate(120%);
+  box-shadow:
+    0 40px 90px -50px rgba(0, 0, 0, 1),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.18),
+    inset 0 -1px 0 0 rgba(255, 255, 255, 0.05);
+  overflow: hidden;
+}
+
+/* The lit top edge of a pane of glass. */
+.deck-face::before {
+  content: '';
+  position: absolute;
+  inset: 0 12% auto 12%;
+  height: 1px;
+  background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.55), transparent);
+}
+
+.deck-kicker {
+  display: block;
+  font-size: 0.66rem;
+  font-weight: 400;
+  letter-spacing: 0.4em;
+  text-transform: uppercase;
+  color: var(--milk-muted);
+}
+
+.deck-title {
+  margin-top: 1.1rem;
+  font-weight: 400;
+  font-size: clamp(1.45rem, 3.4vw, 2.25rem);
+  line-height: 1.15;
+  letter-spacing: -0.035em;
+  color: var(--milk);
+}
+
+.deck-place {
+  margin-top: 0.45rem;
+  font-size: 0.78rem;
+  letter-spacing: 0.14em;
+  color: var(--milk-faint);
+}
+
+.deck-body {
+  margin-top: 1.35rem;
+  font-size: clamp(0.94rem, 1.5vw, 1.04rem);
+  line-height: 1.8;
+  color: var(--milk-soft);
+}
+
+.deck-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  margin-top: clamp(1.25rem, 3vh, 2rem);
+}
+
+/* Lifted out of the controls row and hung level with the middle of the card.
+   `--deck-h` is the measured card height, written by the deck when it sizes
+   its stage — the arrows have to follow a card whose height depends on how
+   its text wrapped. */
+.deck-arrow {
+  position: absolute;
+  top: calc(var(--deck-h, 400px) / 2);
+  transform: translateY(-50%);
+  z-index: 5;
+}
+
+.deck-arrow-left {
+  left: 0;
+}
+
+.deck-arrow-right {
+  right: 0;
+}
+
+.deck-tabs {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.35rem;
+  border-radius: 999px;
+  border: 1px solid var(--edge);
+  background: var(--glass);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+}
+
+.deck-tab {
+  min-height: 40px;
+  padding: 0 1.15rem;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 400;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--milk-faint);
+  transition:
+    color 0.3s ease,
+    background-color 0.3s ease;
+}
+
+.deck-tab:hover {
+  color: var(--milk-soft);
+}
+
+.deck-tab.is-active {
+  color: #000;
+  background: var(--milk);
+}
+
+/* ------------------------------------------------------------------ stack */
+
+.stack-grid {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 270px), 1fr));
+  gap: clamp(0.85rem, 1.8vw, 1.25rem);
+}
+
+.stack-card {
+  padding: clamp(1.5rem, 3vw, 2.1rem);
+  border-radius: 26px;
+  border: 1px solid var(--edge);
+  background: linear-gradient(
+    150deg,
+    rgba(255, 255, 255, 0.075),
+    rgba(255, 255, 255, 0.022)
+  );
+  -webkit-backdrop-filter: blur(26px);
+  backdrop-filter: blur(26px);
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.14);
+  transition:
+    border-color 0.4s ease,
+    box-shadow 0.4s ease,
+    transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.stack-card:hover {
+  transform: translateY(-6px);
+  border-color: var(--edge-strong);
+  box-shadow:
+    0 30px 70px -45px rgba(0, 0, 0, 1),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.28);
+}
+
+.stack-title {
+  font-weight: 400;
+  font-size: 1.3rem;
+  letter-spacing: -0.03em;
+  color: var(--milk);
+}
+
+.stack-summary {
+  margin-top: 0.6rem;
+  font-size: 0.92rem;
+  line-height: 1.75;
+  color: var(--milk-muted);
+}
+
+.stack-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 1.4rem;
+}
+
+.stack-items li {
+  padding: 0.36rem 0.8rem;
+  border-radius: 999px;
+  border: 1px solid var(--edge);
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  color: var(--milk-soft);
+}
+
+/* ---------------------------------------------------------------- contact */
+
+.social-grid {
+  width: 100%;
+  max-width: 640px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.social-card {
+  display: flex;
+  align-items: center;
+  gap: 1.1rem;
+  min-height: 78px;
+  padding: 0 1.4rem;
+  border-radius: 22px;
+  border: 1px solid var(--edge);
+  background: var(--glass);
+  -webkit-backdrop-filter: blur(24px);
+  backdrop-filter: blur(24px);
+  transition:
+    border-color 0.35s ease,
+    background-color 0.35s ease,
+    transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.4s ease;
+}
+
+.social-card:hover {
+  transform: translateY(-4px);
+  border-color: var(--edge-strong);
+  background: var(--glass-strong);
+  box-shadow: 0 24px 54px -40px rgba(0, 0, 0, 1);
+}
+
+.social-icon {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  flex: none;
+  border-radius: 15px;
+  border: 1px solid var(--edge);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--milk);
+  transition:
+    box-shadow 0.4s ease,
+    background-color 0.35s ease;
+}
+
+.social-card:hover .social-icon {
+  background: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 0 28px -8px rgba(244, 240, 232, 0.7);
+}
+
+/* The marks sit milky at rest so the page keeps its single colour, and find
+   their own brand only under the pointer. */
+.social-card:hover .social-icon {
+  color: var(--brand, var(--milk));
+}
+
+.social-icon svg {
+  width: 22px;
+  height: 22px;
+}
+
+.social-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.social-label {
+  font-weight: 400;
+  font-size: 1rem;
+  letter-spacing: -0.015em;
+}
+
+.social-handle {
+  font-size: 0.78rem;
+  color: var(--milk-faint);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.social-go {
+  width: 18px;
+  height: 18px;
+  margin-left: auto;
+  flex: none;
+  color: var(--milk-faint);
+  transition:
+    color 0.35s ease,
+    transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.social-card:hover .social-go {
+  color: var(--milk);
+  transform: translate(3px, -3px);
+}
+
+/* ------------------------------------------------------------------- rail */
+
+.rail {
+  position: fixed;
+  left: 50%;
+  bottom: max(1.25rem, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 0.1rem;
+  padding: 0.35rem;
+  border-radius: 999px;
+  border: 1px solid var(--edge);
+  background: rgba(255, 255, 255, 0.045);
+  -webkit-backdrop-filter: blur(22px);
+  backdrop-filter: blur(22px);
+  box-shadow: 0 20px 50px -30px rgba(0, 0, 0, 1);
+}
+
+/* One element that travels, not a background on each button: a background can
+   only cross-fade, and the travel is what makes the panel feel built. */
+.rail-marker {
+  position: absolute;
+  top: 0.35rem;
+  left: 0;
+  height: calc(100% - 0.7rem);
+  border-radius: 999px;
+  background: var(--milk);
+  box-shadow: 0 0 26px -6px rgba(244, 240, 232, 0.65);
+  pointer-events: none;
+}
+
+.rail-item {
+  position: relative;
+  z-index: 1;
+  min-height: 40px;
+  padding: 0 1.05rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 400;
+  letter-spacing: 0.18em;
+  color: var(--milk-faint);
+  transition: color 0.35s ease;
+}
+
+.rail-item:hover {
+  color: var(--milk-soft);
+}
+
+.rail-item.is-active {
+  color: #000;
+}
+
+/* ------------------------------------------------------------- responsive */
+
+@media (max-width: 900px) {
+  /* A card this long, a header and a panel do not share a phone screen. The
+     pages still fill the viewport; they are simply allowed to run past it
+     rather than clipping the bottom of the card. */
+  .viewport {
+    align-items: flex-start;
+    padding-bottom: clamp(5.5rem, 11vh, 7rem);
   }
-  to {
-    transform: translateX(340%) skewX(-18deg);
+
+  .scene,
+  .about,
+  .home {
+    gap: clamp(1.5rem, 4vh, 2.25rem);
   }
 }
 
-/* Reduced motion: strip animation, but keep hover/opacity transitions usable. */
+@media (max-width: 640px) {
+  /* No room beside a card worth reading, so the arrows drop back into the
+     controls row and the card takes the full width it can get. */
+  .deck-arrow {
+    position: static;
+    transform: none;
+  }
+
+  .deck-controls {
+    gap: 0.35rem;
+  }
+
+  .deck-card {
+    width: 88vw;
+  }
+
+  .deck-face {
+    padding: 1.3rem 1.35rem;
+    border-radius: 24px;
+  }
+
+  .deck-title {
+    font-size: 1.3rem;
+  }
+
+  .deck-body {
+    margin-top: 1rem;
+    font-size: 0.88rem;
+    line-height: 1.7;
+  }
+
+  .glow-round {
+    width: 44px;
+    height: 44px;
+  }
+
+  .glow-round svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  /* Three uppercase, wide-tracked chips plus two arrows do not fit across a
+     phone. Dropping the tracking and the caps is what buys the row back. */
+  .deck-tab {
+    padding: 0 0.6rem;
+    font-size: 0.68rem;
+    letter-spacing: 0.01em;
+    text-transform: none;
+    white-space: nowrap;
+  }
+
+  .deck-body {
+    font-size: 0.85rem;
+    line-height: 1.65;
+  }
+
+  .rail-item {
+    padding: 0 0.7rem;
+    font-size: 0.62rem;
+    letter-spacing: 0.12em;
+  }
+
+  .social-card {
+    min-height: 70px;
+    padding: 0 1.1rem;
+  }
+}
+
+/* A backdrop filter makes the compositor re-read the pixels behind the
+   element every frame it moves, and a phone has the deck, the tabs and the
+   panel all doing it at once. Against pure black an opaque fill is
+   indistinguishable. */
+@media (pointer: coarse) {
+  .deck-face,
+  .deck-tabs,
+  .stack-card,
+  .social-card,
+  .rail,
+  .press-me,
+  .glow-pill,
+  .glow-round {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+
+  .deck-face {
+    background: linear-gradient(150deg, #16161a, #0b0b0e);
+  }
+
+  .rail {
+    background: rgba(14, 14, 17, 0.94);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -1115,10 +1037,9 @@ html[data-motion='lite'] .section-rule::after {
     animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
-    scroll-behavior: auto !important;
   }
 
-  html {
-    scroll-behavior: auto;
+  .caret {
+    display: none;
   }
 }

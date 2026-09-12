@@ -6,13 +6,11 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        // three.js and recharts are deliberately NOT pinned to manual chunks:
-        // naming them here pulls them into the entry's preload graph, which
-        // re-downloads ~270 kB gzipped on every first paint. Left alone,
-        // Rollup keeps them inside the lazy chunks that actually import them.
-        manualChunks: {
-          'motion-vendor': ['framer-motion'],
-        },
+        // three.js is deliberately NOT named here: a manual chunk is pulled
+        // into the entry's preload graph, which would download the whole
+        // renderer before the first character of "hello" is on screen. Left
+        // alone, Rollup keeps it inside the lazy chunk that imports it.
+        manualChunks: undefined,
       },
     },
   },

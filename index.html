@@ -1,106 +1,87 @@
 <!doctype html>
-<html lang="en" class="dark scroll-smooth">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Jahongir Abrorkulov</title>
+    <title>Jahongir Abrorkulov - Hello :)</title>
 
-    <!-- SEO Meta Tags -->
     <meta
       name="description"
-      content="Portfolio of Jahongir Abrorkulov — Frontend & Systems developer based in Tashkent, Uzbekistan. Specializing in React, TypeScript, low-level architecture, C++, and AI systems integration."
+      content="Jahongir Abrorkulov — 15, based in Tashkent. Frontend, backend and AI engineering. A small card of a site: where I learn, what I work with, and how to reach me."
     />
-    <meta name="keywords" content="Jahongir Abrorkulov, Frontend Developer, AI Engineer, Tashkent Developer, React Developer, Systems Engineering, C++, TypeScript, MARS IT Space, Najot Ta'lim" />
     <meta name="author" content="Jahongir Abrorkulov" />
-    <meta name="theme-color" content="#09090b" />
+    <meta name="theme-color" content="#000000" />
+    <meta name="color-scheme" content="dark" />
 
-    <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://abrorkulov.uz/" />
-    <meta property="og:title" content="Jahongir Abrorkulov — Frontend, Systems & AI Developer" />
-    <meta property="og:description" content="Explore interactive widgets, 3D core visualizer, and low-level reverse engineering research." />
+    <meta property="og:title" content="Jahongir Abrorkulov — Hello :)" />
+    <meta
+      property="og:description"
+      content="15, based in Tashkent. Frontend, backend and AI engineering."
+    />
     <meta property="og:image" content="https://abrorkulov.uz/favicon.svg" />
     <meta property="og:locale" content="en_US" />
 
-
-    <!-- Twitter Cards -->
     <meta name="twitter:card" content="summary" />
-    <meta name="twitter:title" content="Jahongir Abrorkulov — Frontend, Systems & AI Developer" />
-    <meta name="twitter:description" content="Frontend Engineering, Low-Level Systems & AI Integration Portfolio." />
+    <meta name="twitter:title" content="Jahongir Abrorkulov — Hello :)" />
+    <meta
+      name="twitter:description"
+      content="15, based in Tashkent. Frontend, backend and AI engineering."
+    />
 
-    <!-- PWA & Favicon Links -->
     <link rel="manifest" href="/manifest.json" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="/favicon.svg" />
-    <meta name="color-scheme" content="dark" />
 
-    <!-- Typography Preloading -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <!-- The stylesheet is loaded without blocking the first paint.
-         `media="print"` means the browser fetches it at a low priority and
-         does not hold rendering for it; the onload flip promotes it to all
-         media the moment it arrives. As a render-blocking <link> this was the
-         single largest delay before anything appeared on screen.
+    <!-- Loaded without blocking the first paint: `media="print"` makes the
+         browser fetch it at a low priority and not hold rendering for it, and
+         the onload flip promotes it the moment it lands. As a plain
+         stylesheet link this was the largest delay before anything appeared.
 
-         Inter's 300 weight was dropped — nothing on the page uses font-light.
-         Instrument Serif ships one weight in roman and italic, and only the
-         italic is used — it is the editorial accent, never body copy. -->
+         Two families, and the pairing is the whole type system: Dancing
+         Script writes the word "Hello", Sora sets everything else. -->
     <link
       rel="preload"
       as="style"
-      href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&family=Sora:wght@200;300;400;500;600&display=swap"
     />
     <link
       rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&family=Sora:wght@200;300;400;500;600&display=swap"
       media="print"
       onload="this.media='all'; this.onload=null;"
     />
     <noscript>
       <link
         rel="stylesheet"
-        href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap"
+        href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&family=Sora:wght@200;300;400;500;600&display=swap"
       />
     </noscript>
 
-    <!-- JSON-LD Structured Data for Person / Portfolio -->
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
         "@type": "Person",
         "name": "Jahongir Abrorkulov",
-        "jobTitle": "Frontend & AI Systems Developer",
+        "jobTitle": "Frontend & AI Developer",
         "address": {
           "@type": "PostalAddress",
           "addressLocality": "Tashkent",
           "addressCountry": "Uzbekistan"
         },
-        "knowsAbout": [
-          "React",
-          "TypeScript",
-          "Tailwind CSS",
-          "C#",
-          "C++",
-          ".NET",
-          "Linux",
-          "AI Engineering",
-          "Prompt Engineering"
-        ],
+        "knowsAbout": ["React", "TypeScript", "C#", ".NET", "C++", "AI Engineering"],
         "alumniOf": [
-          {
-            "@type": "EducationalOrganization",
-            "name": "MARS IT Space"
-          },
-          {
-            "@type": "EducationalOrganization",
-            "name": "Najot Ta'lim"
-          }
+          { "@type": "EducationalOrganization", "name": "Cambridge Learning Center" },
+          { "@type": "EducationalOrganization", "name": "Najot Ta'lim" },
+          { "@type": "EducationalOrganization", "name": "MARS IT School" }
         ]
       }
     </script>
   </head>
-  <body class="bg-void text-ink font-body antialiased">
+  <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
