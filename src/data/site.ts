@@ -134,7 +134,7 @@ export const socials: Social[] = [
   {
     id: 'telegram',
     label: 'Telegram',
-    handle: '@abrorkulov',
+    handle: '@ejodocome',
     href: 'https://t.me/ejodocome',
   },
   {
