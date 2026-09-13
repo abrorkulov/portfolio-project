@@ -109,7 +109,7 @@ export const socials: Social[] = [
     id: 'telegram',
     label: 'Telegram',
     handle: '@abrorkulov',
-    href: 'https://t.me/abrorkulov',
+    href: 'https://t.me/ejodocome',
   },
   {
     id: 'github',
@@ -122,11 +122,5 @@ export const socials: Social[] = [
     label: 'LinkedIn',
     handle: 'jahongir-abrorkulov',
     href: 'https://linkedin.com/in/jahongir-abrorkulov',
-  },
-  {
-    id: 'email',
-    label: 'Email',
-    handle: 'jahongir.abrorkulov@gmail.com',
-    href: 'mailto:jahongir.abrorkulov@gmail.com',
   },
 ]
