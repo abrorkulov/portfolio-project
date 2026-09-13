@@ -37,7 +37,7 @@ api/contact.ts        A Vercel edge function that forwards a message to a Telegr
                       on the site posts to it any more — kept because the Vercel environment
                       variables for it already exist and a contact form may come back.
 src/main.tsx          Entry. Registers the service worker (PROD only).
-src/App.tsx           The page index, the URL hash, and the keyboard.
+src/App.tsx           The page index, the URL hash, the keyboard and the swipe/wheel gestures.
 src/index.css         The entire stylesheet. Hand-written; there is no CSS framework.
 src/data/site.ts      Every string on the site.
 vite.config.ts        Build config. Read the manualChunks comment before touching it.
@@ -68,6 +68,8 @@ linked-to hash.
 | `SnowGL.tsx` | three.js point sprites: the real snow. Lazy, and only where WebGL exists. |
 | `Carousel.tsx` | The study deck — 3D arc, drag, arrows, chips, measured height. |
 | `StepRail.tsx` | The bottom panel, with a highlight that slides between pages. |
+| `Corners.tsx` | Name top-left, `01 ——— 05` page count top-right. On every page. |
+| `Spotlight.tsx` | A pool of milky light that trails the pointer, behind the glass. Fine pointer only. |
 | `GlowArrow.tsx` | The one navigation control, in a round and a pill form. |
 | `SceneHeader.tsx` | Numbered eyebrow + title. |
 | `BrandIcon.tsx` | Four brand marks, inlined as paths. |
@@ -79,6 +81,8 @@ linked-to hash.
 | `useTypewriter.ts` | Types lines one character at a time off a single rAF. |
 | `env.ts` | `prefersReducedMotion`, `canRunWebGL`, `isCompact`. All read live. |
 | `warp.ts` | The one number the snow speeds up by during a page change. |
+| `pointer.ts` | `glass()` — glare + tilt handlers for a pane; `useMagnet()` — pulls `press me !` toward the pointer. |
+| `usePageGestures.ts` | Swipe (touch) and wheel flick (desktop) turn the page. Discrete, never bound to scroll position. |
 
 ---
 
@@ -142,6 +146,28 @@ On `(pointer: coarse)` every backdrop filter is turned off and the fills become 
 pure black nobody can tell, and a phone cannot afford the deck, the chips and the panel all making
 the compositor re-read their backdrop on every frame.
 
+### Glass that answers the pointer
+
+Every pane (`.stack-card`, `.social-card`, `.deck-face`) carries `.glass`, and the flat ones
+also `.tilt`. `glass()` in `pointer.ts` writes `--mx/--my/--rx/--ry` straight onto the element on
+`pointermove` and the stylesheet draws the glare and the lean — **no React state on hover**. It
+returns `{}` on a coarse pointer, so a phone never binds the handlers.
+
+Two things follow from `.tilt` owning `transform`:
+
+- the hover lift is `--lift`, not a `transform` in the `:hover` rule;
+- `SceneStage` passes `clearProps: 'transform,opacity'` on the `data-enter` stagger. Without it
+  the `translate(0, 0)` gsap leaves inline outranks the class and the cards never lean.
+
+### Gestures
+
+`usePageGestures` turns the page on a vertical swipe or a wheel flick, one page per gesture, with
+a 900 ms cooldown. A page taller than the screen still scrolls normally: the gesture only counts if
+the document was **already** at the edge when it began. Trackpad inertia is handled by requiring
+160 ms of wheel silence before a new gesture can start. If the wheel behaviour is ever unwanted,
+delete the `wheel` listener and leave the touch ones. Keys: `↑ ↓ PgUp PgDn Home End 1–5`, and
+`← →` outside the deck.
+
 ### The page change
 
 Forward throws the current page up and out and brings the next one in from below; back does the
@@ -179,6 +205,13 @@ the first number to change if the drag feels heavy or twitchy.
 
 Below 640px there is no room for a control column beside a card worth reading, so the arrows drop
 out of their absolute position and back into the chip row.
+
+### Phones
+
+`.viewport` is `align-items: flex-start` with `margin-block: auto` on `.stage`: that centres a
+short page and lets a tall one start at the top instead of overflowing both ends. Below 640px the
+stack grid becomes a horizontal scroll-snap row (`.stack-grid`), because three cards on top of each
+other ran under the panel. The contact `copy` buttons are always visible under `(hover: none)`.
 
 ### Snow
 

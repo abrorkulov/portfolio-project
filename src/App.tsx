@@ -2,11 +2,13 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import Snow from './components/Snow'
 import SceneStage from './components/SceneStage'
 import StepRail from './components/StepRail'
+import Corners from './components/Corners'
 import HomeScene from './scenes/HomeScene'
 import AboutScene from './scenes/AboutScene'
 import StudyScene from './scenes/StudyScene'
 import StackScene from './scenes/StackScene'
 import ContactScene from './scenes/ContactScene'
+import { usePageGestures } from './lib/usePageGestures'
 import { pages } from './data/site'
 
 const LAST = pages.length - 1
@@ -33,6 +35,18 @@ export default function App() {
     })
   }, [])
 
+  // Relative to whatever page is current at the moment the gesture lands, so
+  // the gesture listeners never have to be re-bound when the page changes.
+  const step = useCallback((delta: number) => {
+    setPage((current) => {
+      const target = Math.max(0, Math.min(LAST, current + delta))
+      seen.current.add(current)
+      return target
+    })
+  }, [])
+
+  usePageGestures(step)
+
   // The hash is a label on the current page, written with `replaceState` so
   // the back button leaves the site instead of walking the visitor backwards
   // through five screens they already saw.
@@ -50,8 +64,14 @@ export default function App() {
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
+      if (event.metaKey || event.ctrlKey || event.altKey) return
       if (event.key === 'ArrowDown' || event.key === 'PageDown') go(page + 1)
       if (event.key === 'ArrowUp' || event.key === 'PageUp') go(page - 1)
+      if (event.key === 'Home') go(0)
+      if (event.key === 'End') go(LAST)
+      // 1–5 jump straight to a page.
+      const digit = Number(event.key)
+      if (digit >= 1 && digit <= pages.length) go(digit - 1)
       // The deck owns the left and right keys while it is on screen; it is
       // the thing the reader is most obviously pointing at.
       if (page === 2) return
@@ -65,6 +85,7 @@ export default function App() {
   return (
     <div className="app">
       <Snow />
+      <Corners page={page} onHome={() => go(0)} />
 
       <main className="viewport">
         <SceneStage page={page}>

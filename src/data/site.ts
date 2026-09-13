@@ -12,10 +12,19 @@ export const pages = [
   { id: 'contact', label: 'contact' },
 ] as const
 
+export const corners = {
+  /** Top-left of every page. The only place the full name appears. */
+  name: 'jahongir abrorkulov',
+}
+
 export const home = {
   /** Typed one character at a time, in the script face, very large. */
   greeting: 'Hello',
   smile: ':)',
+  /** What the smile turns into under the pointer. */
+  wink: ';)',
+  /** Three words under the button, so a stranger knows what this is. */
+  tagline: 'frontend · backend · ai',
   cta: 'press me !',
 }
 
@@ -104,6 +113,12 @@ export type Social = {
   href: string
 }
 
+export const contact = {
+  copy: 'copy',
+  copied: 'copied',
+  signoff: 'thanks for making it this far :)',
+}
+
 export const socials: Social[] = [
   {
     id: 'telegram',
@@ -124,3 +139,4 @@ export const socials: Social[] = [
     href: 'https://linkedin.com/in/jahongir-abrorkulov',
   },
 ]
+  

@@ -97,6 +97,10 @@ export default function SceneStage({ page, children }: Props) {
           stagger: 0.085,
           ease: 'power3.out',
           delay: 0.16,
+          // The glass panes lean toward the pointer with a transform from the
+          // stylesheet; an inline `translate(0, 0)` left behind by this tween
+          // would override it for the life of the page.
+          clearProps: 'transform,opacity',
         })
       }
     }, el)

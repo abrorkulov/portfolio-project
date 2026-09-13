@@ -1,4 +1,5 @@
 import { Suspense, lazy, useEffect, useState } from 'react'
+import Spotlight from './Spotlight'
 import { canRunWebGL } from '../lib/env'
 
 const SnowGL = lazy(() => import('./SnowGL'))
@@ -21,6 +22,7 @@ export default function Snow() {
     <div className="snow" aria-hidden="true">
       <div className="snow-static" />
       <div className="snow-static snow-static-far" />
+      <Spotlight />
       {webgl ? (
         <Suspense fallback={null}>
           <SnowGL />

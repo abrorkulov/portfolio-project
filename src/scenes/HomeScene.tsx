@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useTypewriter } from '../lib/useTypewriter'
+import { useMagnet } from '../lib/pointer'
 import { home } from '../data/site'
 
 type Props = {
@@ -11,6 +12,8 @@ type Props = {
 export default function HomeScene({ onNext, instant }: Props) {
   const greeting = useTypewriter([home.greeting], { speed: 165, delay: 420, instant })
   const [landed, setLanded] = useState(false)
+  const [wink, setWink] = useState(false)
+  const magnet = useMagnet<HTMLSpanElement>()
 
   // The smile and the button are the payoff of the typing, so they wait for
   // it rather than sitting there while the word is still being written.
@@ -29,13 +32,25 @@ export default function HomeScene({ onNext, instant }: Props) {
       <h1 className="home-hello">
         <span className="home-word">{greeting.typed[0]}</span>
         {!greeting.done ? <i className="caret caret-hello" /> : null}
-        <span className={landed ? 'home-smile is-in' : 'home-smile'}>{home.smile}</span>
+        <span
+          className={landed ? 'home-smile is-in' : 'home-smile'}
+          onPointerEnter={() => setWink(true)}
+          onPointerLeave={() => setWink(false)}
+        >
+          {wink ? home.wink : home.smile}
+        </span>
       </h1>
 
       <div className={landed ? 'home-cta is-in' : 'home-cta'}>
-        <button type="button" className="press-me" onClick={onNext}>
-          <span>{home.cta}</span>
-        </button>
+        {/* The magnet moves this span, never the button: the button carries
+            its own hover transition on transform, and the two must not share
+            an element. */}
+        <span ref={magnet} className="magnet">
+          <button type="button" className="press-me" onClick={onNext}>
+            <span>{home.cta}</span>
+          </button>
+        </span>
+        <p className="home-tagline">{home.tagline}</p>
       </div>
     </div>
   )

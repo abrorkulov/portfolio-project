@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import gsap from 'gsap'
 import GlowArrow from './GlowArrow'
 import { prefersReducedMotion } from '../lib/env'
+import { glass } from '../lib/pointer'
 import type { StudyCard } from '../data/site'
 
 type Props = {
@@ -36,6 +37,8 @@ function metrics(width: number) {
 export default function Carousel({ cards }: Props) {
   const [index, setIndex] = useState(0)
   const [reachable, setReachable] = useState(0)
+  // Glare only. The tilt is the deck's own, driven from `layout`.
+  const lit = glass(0)
 
   const deck = useRef<HTMLDivElement>(null)
   const stage = useRef<HTMLDivElement>(null)
@@ -200,7 +203,7 @@ export default function Carousel({ cards }: Props) {
                 style={{ pointerEvents: i === reachable ? 'auto' : 'none' }}
                 aria-hidden={i === index ? undefined : true}
               >
-                <div className="deck-face">
+                <div className="deck-face glass" {...lit}>
                   <span className="deck-kicker">{card.kicker}</span>
                   <h3 className="deck-title">{card.title}</h3>
                   <p className="deck-place">{card.place}</p>

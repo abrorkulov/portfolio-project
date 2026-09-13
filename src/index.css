@@ -163,6 +163,25 @@ ol {
   height: 100%;
 }
 
+/* The pool of light under the pointer. Sized and centred here; moved by a
+   transform from Spotlight.tsx. Milk, not white, like everything else. */
+.spotlight {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 900px;
+  height: 900px;
+  margin: -450px 0 0 -450px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(244, 240, 232, 0.075),
+    rgba(244, 240, 232, 0.028) 35%,
+    transparent 68%
+  );
+  will-change: transform;
+}
+
 /* ------------------------------------------------------------------ shell */
 
 .app {
@@ -175,15 +194,20 @@ ol {
 .viewport {
   flex: 1;
   display: flex;
-  align-items: center;
+  /* Not `center`: a flex item taller than a centred container overflows at
+     both ends and the top of the page becomes unreachable. The stage centres
+     itself with auto margins instead, which collapse to nothing the moment
+     there is no room left to share. */
+  align-items: flex-start;
   justify-content: center;
   min-height: 100svh;
-  padding: clamp(3rem, 8vh, 5rem) var(--shell) clamp(7.5rem, 16vh, 10rem);
+  padding: clamp(3.5rem, 9vh, 5.5rem) var(--shell) clamp(7.5rem, 16vh, 10rem);
 }
 
 .stage {
   width: 100%;
   max-width: 1180px;
+  margin-block: auto;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -191,6 +215,119 @@ ol {
      it a layer up front stops the first frame of every change paying for the
      promotion. */
   will-change: transform, opacity;
+}
+
+/* ---------------------------------------------------------------- corners */
+
+.corners {
+  position: fixed;
+  top: max(1.25rem, env(safe-area-inset-top));
+  left: var(--shell);
+  right: var(--shell);
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  pointer-events: none;
+}
+
+.corner {
+  pointer-events: auto;
+  font-size: 0.66rem;
+  font-weight: 400;
+  letter-spacing: 0.3em;
+  text-transform: lowercase;
+  color: var(--milk-faint);
+  transition: color 0.35s ease;
+}
+
+.corner-name {
+  padding: 0.4rem 0;
+}
+
+.corner-name:hover {
+  color: var(--milk);
+}
+
+.corner-count {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.2em;
+}
+
+.corner-current {
+  color: var(--milk-soft);
+}
+
+/* Five short strokes, one per page, lit up to the current one. The count is
+   readable on its own; the strokes are what let it be read from a glance. */
+.corner-track {
+  display: flex;
+  gap: 4px;
+}
+
+.corner-track i {
+  width: 14px;
+  height: 1px;
+  background: var(--edge-strong);
+  transition:
+    background-color 0.5s ease,
+    box-shadow 0.5s ease;
+}
+
+.corner-track i.is-lit {
+  background: var(--milk);
+  box-shadow: 0 0 8px rgba(244, 240, 232, 0.6);
+}
+
+/* ------------------------------------------------------------------ glass */
+
+/* Two behaviours shared by every pane on the site.
+
+   `.glass` paints a soft highlight where the pointer is, from the `--mx`/`--my`
+   the pointer handlers write. `.tilt` leans the pane a few degrees toward the
+   pointer from `--rx`/`--ry`. Both are pure CSS off custom properties: the
+   handler writes four numbers and the stylesheet does the rest, so a hover
+   never re-renders anything.
+
+   The glare is an overlay, not a change to the background, so it sits over
+   the frosted snow rather than replacing it. */
+.glass {
+  position: relative;
+}
+
+.glass::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: radial-gradient(
+    320px circle at var(--mx, 50%) var(--my, 50%),
+    rgba(255, 255, 255, 0.13),
+    rgba(255, 255, 255, 0.04) 40%,
+    transparent 70%
+  );
+  opacity: 0;
+  transition: opacity 0.45s ease;
+}
+
+.glass.is-lit::after {
+  opacity: 1;
+}
+
+.tilt {
+  transform: perspective(900px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg))
+    translateY(var(--lift, 0px));
+  transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* While the pointer is on the pane the transform has to keep up with the
+   hand; the slow ease is for the way back. */
+.tilt.is-lit {
+  transition-duration: 0.15s;
 }
 
 /* ------------------------------------------------------------------- home */
@@ -252,6 +389,31 @@ ol {
 .home-smile.is-in {
   opacity: 1;
   transform: none;
+}
+
+.home-smile:hover {
+  cursor: default;
+}
+
+.home-cta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.6rem;
+}
+
+/* No transition on transform here — see useMagnet. */
+.magnet {
+  display: inline-block;
+  will-change: transform;
+}
+
+.home-tagline {
+  font-size: 0.7rem;
+  font-weight: 400;
+  letter-spacing: 0.34em;
+  text-transform: lowercase;
+  color: var(--milk-faint);
 }
 
 .home-cta,
@@ -707,6 +869,8 @@ ol {
 }
 
 .stack-card {
+  position: relative;
+  overflow: hidden;
   padding: clamp(1.5rem, 3vw, 2.1rem);
   border-radius: 26px;
   border: 1px solid var(--edge);
@@ -725,14 +889,40 @@ ol {
 }
 
 .stack-card:hover {
-  transform: translateY(-6px);
+  --lift: -6px;
   border-color: var(--edge-strong);
   box-shadow:
     0 30px 70px -45px rgba(0, 0, 0, 1),
     inset 0 1px 0 0 rgba(255, 255, 255, 0.28);
 }
 
+/* An oversized numeral at the edge of the card, all but invisible: it gives
+   three identical panes an order and a bit of typographic weight without
+   adding a single word. */
+.stack-num {
+  position: absolute;
+  top: -0.35em;
+  right: 0.12em;
+  font-size: clamp(5rem, 9vw, 7.5rem);
+  font-weight: 200;
+  line-height: 1;
+  letter-spacing: -0.06em;
+  color: var(--milk);
+  opacity: 0.055;
+  pointer-events: none;
+  user-select: none;
+  transition:
+    opacity 0.5s ease,
+    transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.stack-card:hover .stack-num {
+  opacity: 0.11;
+  transform: translateY(-4px);
+}
+
 .stack-title {
+  position: relative;
   font-weight: 400;
   font-size: 1.3rem;
   letter-spacing: -0.03em;
@@ -760,6 +950,16 @@ ol {
   font-size: 0.72rem;
   letter-spacing: 0.06em;
   color: var(--milk-soft);
+  transition:
+    border-color 0.3s ease,
+    background-color 0.3s ease,
+    color 0.3s ease;
+}
+
+.stack-items li:hover {
+  border-color: var(--edge-strong);
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--milk);
 }
 
 /* ---------------------------------------------------------------- contact */
@@ -770,6 +970,10 @@ ol {
   display: flex;
   flex-direction: column;
   gap: 0.7rem;
+}
+
+.social-row {
+  position: relative;
 }
 
 .social-card {
@@ -791,7 +995,7 @@ ol {
 }
 
 .social-card:hover {
-  transform: translateY(-4px);
+  --lift: -4px;
   border-color: var(--edge-strong);
   background: var(--glass-strong);
   box-shadow: 0 24px 54px -40px rgba(0, 0, 0, 1);
@@ -864,6 +1068,56 @@ ol {
   transform: translate(3px, -3px);
 }
 
+/* Floats over the right end of the card. It is a sibling of the link, not a
+   child — a button inside an anchor is not valid markup. */
+.social-copy {
+  position: absolute;
+  top: 50%;
+  right: 3.4rem;
+  transform: translateY(-50%);
+  min-height: 34px;
+  padding: 0 0.85rem;
+  border-radius: 999px;
+  border: 1px solid var(--edge);
+  font-size: 0.62rem;
+  font-weight: 400;
+  letter-spacing: 0.22em;
+  text-transform: lowercase;
+  color: var(--milk-muted);
+  background: rgba(255, 255, 255, 0.03);
+  opacity: 0;
+  transition:
+    opacity 0.3s ease,
+    color 0.3s ease,
+    border-color 0.3s ease,
+    background-color 0.3s ease;
+}
+
+.social-row:hover .social-copy,
+.social-copy:focus-visible,
+.social-copy.is-done {
+  opacity: 1;
+}
+
+.social-copy:hover {
+  color: var(--milk);
+  border-color: var(--edge-strong);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.social-copy.is-done {
+  color: #000;
+  background: var(--milk);
+  border-color: var(--milk);
+}
+
+/* A phone cannot hover, so the button is simply there. */
+@media (hover: none) {
+  .social-copy {
+    opacity: 1;
+  }
+}
+
 /* ------------------------------------------------------------------- rail */
 
 .rail {
@@ -925,7 +1179,6 @@ ol {
      pages still fill the viewport; they are simply allowed to run past it
      rather than clipping the bottom of the card. */
   .viewport {
-    align-items: flex-start;
     padding-bottom: clamp(5.5rem, 11vh, 7rem);
   }
 
@@ -1002,6 +1255,57 @@ ol {
     min-height: 70px;
     padding: 0 1.1rem;
   }
+
+  .social-copy {
+    right: 2.6rem;
+    min-height: 30px;
+    padding: 0 0.6rem;
+    font-size: 0.58rem;
+  }
+
+  .corner {
+    font-size: 0.58rem;
+    letter-spacing: 0.22em;
+  }
+
+  .corner-track i {
+    width: 9px;
+  }
+
+  .home-tagline {
+    font-size: 0.62rem;
+    letter-spacing: 0.26em;
+  }
+
+  /* Three cards stacked on top of each other run well past a phone screen
+     and under the panel. Laid on their side they take one row the finger can
+     flick through, with the next card peeking in from the edge, the same way
+     the deck does one page earlier. The row bleeds through the shell padding
+     so the cards run to the edge of the screen rather than stopping short. */
+  .stack-grid {
+    display: flex;
+    gap: 0.75rem;
+    width: calc(100% + 2 * var(--shell));
+    margin: 0 calc(-1 * var(--shell));
+    padding: 0.5rem var(--shell);
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+  }
+
+  .stack-grid::-webkit-scrollbar {
+    display: none;
+  }
+
+  .stack-card {
+    flex: 0 0 min(78vw, 320px);
+    scroll-snap-align: center;
+  }
+
+  .stack-num {
+    font-size: 4.5rem;
+  }
 }
 
 /* A backdrop filter makes the compositor re-read the pixels behind the
@@ -1027,6 +1331,11 @@ ol {
 
   .rail {
     background: rgba(14, 14, 17, 0.94);
+  }
+
+  .glass::after,
+  .spotlight {
+    display: none;
   }
 }
 
