@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTypewriter } from '../lib/useTypewriter'
 import { useMagnet } from '../lib/pointer'
+import { useCaretSparks } from '../lib/snowfx'
 import { home } from '../data/site'
 
 type Props = {
@@ -10,10 +11,21 @@ type Props = {
 }
 
 export default function HomeScene({ onNext, instant }: Props) {
-  const greeting = useTypewriter([home.greeting], { speed: 165, delay: 420, instant })
+  // A click on the word while it is still being written finishes it. The
+  // typing is the charm of the page, not a gate in front of it.
+  const [skipped, setSkipped] = useState(false)
+  const greeting = useTypewriter([home.greeting], {
+    speed: 165,
+    delay: 420,
+    instant: instant || skipped,
+  })
   const [landed, setLanded] = useState(false)
   const [wink, setWink] = useState(false)
   const magnet = useMagnet<HTMLSpanElement>()
+
+  // Every letter that lands knocks a few flakes off the caret.
+  const hello = useRef<HTMLHeadingElement>(null)
+  useCaretSparks(hello, greeting.typed[0].length, 36)
 
   // The smile and the button are the payoff of the typing, so they wait for
   // it rather than sitting there while the word is still being written.
@@ -29,7 +41,12 @@ export default function HomeScene({ onNext, instant }: Props) {
 
   return (
     <div className="home">
-      <h1 className="home-hello">
+      <h1
+        ref={hello}
+        className={greeting.done ? 'home-hello' : 'home-hello is-typing'}
+        onClick={() => setSkipped(true)}
+        title={greeting.done ? undefined : 'Skip'}
+      >
         <span className="home-word">{greeting.typed[0]}</span>
         {!greeting.done ? <i className="caret caret-hello" /> : null}
         <span

@@ -6,8 +6,10 @@
                      handwriting on the site, so it has to stay rare.
      Sora            everything else — titles, copy, labels, numbers.
 
-   There is no accent colour anywhere. The palette is a single milky white
-   against pure black, and every surface is a different amount of that white.
+   One accent, and it is ice: a pale blue-white that only ever appears where
+   the pointer is — a glowing edge, a lit chip, the halo of a button. At rest
+   the page is milk on black, and the ice is what the visitor's own hand
+   brings to it.
 --------------------------------------------------------------------------- */
 
 :root {
@@ -19,6 +21,11 @@
   --milk-soft: #cfcabf;
   --milk-muted: #8f8a80;
   --milk-faint: #5c584f;
+
+  /* The accent. Used as a glow and an edge, never as a fill or as type at
+     rest, so the page keeps its single colour until something is touched. */
+  --ice: #b7dcff;
+  --ice-rgb: 183, 220, 255;
 
   --glass: rgba(255, 255, 255, 0.062);
   --glass-strong: rgba(255, 255, 255, 0.1);
@@ -62,7 +69,9 @@ body {
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  overscroll-behavior-y: none;
+  /* Both axes: a two-finger swipe across the deck must not become the
+     browser's swipe-to-go-back. */
+  overscroll-behavior: none;
 }
 
 button {
@@ -108,6 +117,19 @@ ol {
   outline: 2px solid rgba(244, 240, 232, 0.8);
   outline-offset: 3px;
   border-radius: 8px;
+}
+
+/* Read aloud, never seen. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 /* ------------------------------------------------------------------- snow */
@@ -246,7 +268,7 @@ ol {
 }
 
 .corner-name:hover {
-  color: var(--milk);
+  color: var(--ice);
 }
 
 .corner-count {
@@ -318,6 +340,39 @@ ol {
   opacity: 1;
 }
 
+/* The edge lights up where the pointer is: a one-pixel ring of ice, masked
+   out of a radial gradient so only the border of the pane is painted. It is
+   a child of the pane, so a mask here does not touch the pane's backdrop. */
+.glass::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  pointer-events: none;
+  z-index: 2;
+  background: radial-gradient(
+    300px circle at var(--mx, 50%) var(--my, 50%),
+    rgba(var(--ice-rgb), 0.95),
+    rgba(var(--ice-rgb), 0.25) 40%,
+    transparent 72%
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity 0.45s ease;
+}
+
+.glass.is-lit::before {
+  opacity: 1;
+}
+
 .tilt {
   transform: perspective(900px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg))
     translateY(var(--lift, 0px));
@@ -346,22 +401,52 @@ ol {
   justify-content: center;
   font-family: var(--font-script);
   font-weight: 700;
-  font-size: clamp(5.5rem, 23vw, 18rem);
+  font-size: clamp(5.75rem, 25vw, 18rem);
   line-height: 1;
   letter-spacing: 0.01em;
   color: var(--milk);
   /* The glow is what stops a single word on a black field reading as clip
-     art. Two radii: a tight one for the ink, a wide one for the room. */
-  text-shadow:
-    0 0 24px rgba(244, 240, 232, 0.28),
-    0 0 120px rgba(244, 240, 232, 0.14);
+     art. Two radii: a tight milky one for the ink, a wide icy one for the
+     room. A filter rather than a text-shadow because the word itself is
+     painted with a gradient clipped to its glyphs, and a text-shadow would
+     show through transparent type. */
+  filter: drop-shadow(0 0 22px rgba(244, 240, 232, 0.34))
+    drop-shadow(0 0 90px rgba(var(--ice-rgb), 0.22));
+  animation: breathe-glow 6s ease-in-out infinite;
   /* A script face overhangs its glyph box on both sides; without this the
      capital H loses its entry stroke at the left edge on a narrow screen. */
   padding: 0 0.12em;
 }
 
+/* A slow pass of icy light along the letters, so the word is never quite
+   still even after it has been written. */
 .home-word {
-  animation: breathe-glow 6s ease-in-out infinite;
+  background: linear-gradient(
+    105deg,
+    var(--milk) 0%,
+    var(--milk) 40%,
+    #ffffff 47%,
+    var(--ice) 52%,
+    var(--milk) 60%,
+    var(--milk) 100%
+  );
+  background-size: 280% 100%;
+  background-position: 120% 0;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: sheen 7s ease-in-out infinite 2s;
+}
+
+@keyframes sheen {
+  0%,
+  35% {
+    background-position: 120% 0;
+  }
+  65%,
+  100% {
+    background-position: -60% 0;
+  }
 }
 
 @keyframes breathe-glow {
@@ -393,6 +478,13 @@ ol {
 
 .home-smile:hover {
   cursor: default;
+  color: var(--ice);
+}
+
+/* While the text is still being written, a click on it finishes it. */
+.home-hello.is-typing,
+.about-lines.is-typing {
+  cursor: pointer;
 }
 
 .home-cta {
@@ -516,10 +608,12 @@ ol {
 
 .press-me:hover,
 .glow-pill:hover:not(:disabled) {
-  border-color: var(--edge-strong);
+  border-color: rgba(var(--ice-rgb), 0.5);
   background: var(--glass-strong);
   transform: translateY(-3px);
-  box-shadow: 0 0 46px -10px rgba(244, 240, 232, 0.55);
+  box-shadow:
+    0 0 46px -10px rgba(var(--ice-rgb), 0.55),
+    inset 0 0 24px -12px rgba(var(--ice-rgb), 0.5);
 }
 
 .press-me:active,
@@ -580,10 +674,10 @@ ol {
 }
 
 .glow-round:hover:not(:disabled) {
-  border-color: var(--edge-strong);
+  border-color: rgba(var(--ice-rgb), 0.5);
   background: var(--glass-strong);
   transform: scale(1.08);
-  box-shadow: 0 0 36px -10px rgba(244, 240, 232, 0.6);
+  box-shadow: 0 0 36px -10px rgba(var(--ice-rgb), 0.6);
 }
 
 .glow-round:active:not(:disabled) {
@@ -619,6 +713,26 @@ ol {
   /* Every line holds its row from the start, so nothing under the block walks
      down the screen as the text fills in. */
   min-height: 1.6em;
+  /* Each line sits on its own sheet of glass a little further back than the
+     one above, and the sheets slide against the pointer at different rates. */
+  --depth: 1;
+  transform: translate(
+    calc(var(--px, 0) * var(--depth) * -5px),
+    calc(var(--py, 0) * var(--depth) * -3px)
+  );
+  transition: transform 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.about-line:nth-child(2) {
+  --depth: 2;
+}
+
+.about-line:nth-child(3) {
+  --depth: 3;
+}
+
+.about-line:nth-child(4) {
+  --depth: 4;
 }
 
 /* ------------------------------------------------------------- page chrome */
@@ -638,8 +752,32 @@ ol {
 }
 
 .scene-header {
+  position: relative;
   width: 100%;
   text-align: center;
+}
+
+/* The page's number, enormous and all but invisible, standing behind the
+   title. It drifts against the pointer a little slower than the page does,
+   which is what gives the black a back wall. */
+.scene-ghost {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: -1;
+  font-size: clamp(11rem, 30vw, 24rem);
+  font-weight: 200;
+  line-height: 1;
+  letter-spacing: -0.06em;
+  color: var(--milk);
+  opacity: 0.035;
+  pointer-events: none;
+  user-select: none;
+  transform: translate(
+    calc(-50% + var(--px, 0) * -22px),
+    calc(-52% + var(--py, 0) * -14px)
+  );
+  transition: transform 0.9s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .scene-eyebrow {
@@ -671,6 +809,13 @@ ol {
   line-height: 1.1;
   letter-spacing: -0.045em;
   color: var(--milk);
+  /* The letters tip in from below; this is the depth they tip through. */
+  perspective: 600px;
+}
+
+.scene-title span {
+  display: inline-block;
+  transform-origin: 50% 100%;
 }
 
 .scene-foot {
@@ -684,6 +829,51 @@ ol {
   font-size: 0.76rem;
   letter-spacing: 0.2em;
   color: var(--milk-faint);
+}
+
+/* The one line on the site that is different every time it is opened. */
+.scene-now {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.55rem;
+  font-size: 0.68rem;
+  letter-spacing: 0.2em;
+  text-transform: lowercase;
+  color: var(--milk-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.scene-now time {
+  color: var(--milk-soft);
+}
+
+.scene-now-sep,
+.scene-now-sky {
+  color: var(--milk-faint);
+}
+
+/* A pulse, not a blink: the site is live, not alarmed. */
+.scene-now-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--milk);
+  box-shadow: 0 0 10px rgba(244, 240, 232, 0.8);
+  animation: now-pulse 2.4s ease-in-out infinite;
+}
+
+@keyframes now-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(0.8);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 /* ------------------------------------------------------------------- deck */
@@ -751,18 +941,9 @@ ol {
   backdrop-filter: blur(30px) saturate(120%);
   box-shadow:
     0 40px 90px -50px rgba(0, 0, 0, 1),
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.18),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.22),
     inset 0 -1px 0 0 rgba(255, 255, 255, 0.05);
   overflow: hidden;
-}
-
-/* The lit top edge of a pane of glass. */
-.deck-face::before {
-  content: '';
-  position: absolute;
-  inset: 0 12% auto 12%;
-  height: 1px;
-  background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.55), transparent);
 }
 
 .deck-kicker {
@@ -851,7 +1032,7 @@ ol {
 }
 
 .deck-tab:hover {
-  color: var(--milk-soft);
+  color: var(--ice);
 }
 
 .deck-tab.is-active {
@@ -890,7 +1071,7 @@ ol {
 
 .stack-card:hover {
   --lift: -6px;
-  border-color: var(--edge-strong);
+  border-color: rgba(var(--ice-rgb), 0.28);
   box-shadow:
     0 30px 70px -45px rgba(0, 0, 0, 1),
     inset 0 1px 0 0 rgba(255, 255, 255, 0.28);
@@ -957,9 +1138,10 @@ ol {
 }
 
 .stack-items li:hover {
-  border-color: var(--edge-strong);
-  background: rgba(255, 255, 255, 0.07);
-  color: var(--milk);
+  border-color: rgba(var(--ice-rgb), 0.55);
+  background: rgba(var(--ice-rgb), 0.08);
+  color: var(--ice);
+  box-shadow: 0 0 18px -6px rgba(var(--ice-rgb), 0.6);
 }
 
 /* ---------------------------------------------------------------- contact */
@@ -996,7 +1178,7 @@ ol {
 
 .social-card:hover {
   --lift: -4px;
-  border-color: var(--edge-strong);
+  border-color: rgba(var(--ice-rgb), 0.28);
   background: var(--glass-strong);
   box-shadow: 0 24px 54px -40px rgba(0, 0, 0, 1);
 }
@@ -1100,9 +1282,9 @@ ol {
 }
 
 .social-copy:hover {
-  color: var(--milk);
-  border-color: var(--edge-strong);
-  background: rgba(255, 255, 255, 0.08);
+  color: var(--ice);
+  border-color: rgba(var(--ice-rgb), 0.5);
+  background: rgba(var(--ice-rgb), 0.08);
 }
 
 .social-copy.is-done {
@@ -1165,7 +1347,7 @@ ol {
 }
 
 .rail-item:hover {
-  color: var(--milk-soft);
+  color: var(--ice);
 }
 
 .rail-item.is-active {
@@ -1173,6 +1355,41 @@ ol {
 }
 
 /* ------------------------------------------------------------- responsive */
+
+/* A 1366×768 laptop, or a 1440×900 one once the browser has taken its strip
+   off the top. The study page — a header, a card of real text, its controls
+   and the pill that moves on — ran about a hundred pixels past that, and the
+   pill sat under the panel until the reader thought to scroll a page that
+   did not look scrollable. Everything gives a little rather than one thing
+   giving a lot. */
+@media (max-height: 900px) and (min-width: 641px) {
+  .viewport {
+    padding-top: clamp(3rem, 7vh, 4.5rem);
+    padding-bottom: clamp(6.25rem, 12vh, 7.5rem);
+  }
+
+  .scene {
+    gap: clamp(1.5rem, 3.5vh, 2.25rem);
+  }
+
+  .scene-title {
+    font-size: clamp(1.8rem, 4.6vw, 3.1rem);
+  }
+
+  .deck-face {
+    padding: clamp(1.4rem, 3vw, 2.2rem) clamp(1.6rem, 3.6vw, 2.9rem);
+  }
+
+  .deck-body {
+    margin-top: 1.1rem;
+    font-size: 0.96rem;
+    line-height: 1.7;
+  }
+
+  .deck-controls {
+    margin-top: 1.1rem;
+  }
+}
 
 @media (max-width: 900px) {
   /* A card this long, a header and a panel do not share a phone screen. The
@@ -1203,6 +1420,17 @@ ol {
 
   .deck-card {
     width: 88vw;
+  }
+
+  /* The neighbour cards run past the screen, and a phone browser widens
+     its layout viewport to fit them — the whole page zooms out. Clip at the
+     screen edge instead; the row bleeds through the shell padding so the
+     cut lands on the edge of the glass, not twenty pixels short of it. On a
+     coarse pointer there is no backdrop filter for this clip to break. */
+  .deck-viewport {
+    width: calc(100% + 2 * var(--shell));
+    margin: 0 calc(-1 * var(--shell));
+    overflow: hidden;
   }
 
   .deck-face {
@@ -1334,8 +1562,16 @@ ol {
   }
 
   .glass::after,
+  .glass::before,
   .spotlight {
     display: none;
+  }
+
+  /* Two wide drop-shadows re-rasterise a word this large every frame it
+     breathes; one narrow one reads the same on a phone. */
+  .home-hello {
+    filter: drop-shadow(0 0 18px rgba(244, 240, 232, 0.32));
+    animation: none;
   }
 }
 
@@ -1350,5 +1586,11 @@ ol {
 
   .caret {
     display: none;
+  }
+
+  .home-word {
+    animation: none;
+    background: none;
+    color: var(--milk);
   }
 }

@@ -1,3 +1,5 @@
+import { useMagnet } from '../lib/pointer'
+
 type Direction = 'left' | 'right' | 'down'
 
 type Props = {
@@ -50,32 +52,40 @@ export default function GlowArrow({
   caption,
   disabled = false,
 }: Props) {
+  // The wrapper is what the magnet moves, never the button: the button has
+  // its own transition on transform, and the two must not share an element.
+  const magnet = useMagnet<HTMLSpanElement>(variant === 'pill' ? 70 : 50, 0.3)
+
   if (variant === 'pill') {
     return (
+      <span ref={magnet} className="magnet">
+        <button
+          type="button"
+          onClick={onClick}
+          disabled={disabled}
+          aria-label={label}
+          className="glow-pill"
+        >
+          <span>{caption ?? label}</span>
+          <span className="glow-pill-mark">
+            <Arrow direction={direction} />
+          </span>
+        </button>
+      </span>
+    )
+  }
+
+  return (
+    <span ref={magnet} className="magnet">
       <button
         type="button"
         onClick={onClick}
         disabled={disabled}
         aria-label={label}
-        className="glow-pill"
+        className="glow-round"
       >
-        <span>{caption ?? label}</span>
-        <span className="glow-pill-mark">
-          <Arrow direction={direction} />
-        </span>
+        <Arrow direction={direction} />
       </button>
-    )
-  }
-
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      aria-label={label}
-      className="glow-round"
-    >
-      <Arrow direction={direction} />
-    </button>
+    </span>
   )
 }

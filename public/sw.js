@@ -1,9 +1,9 @@
 // Bump this on any change to the caching strategy below.
-const CACHE_NAME = 'signal-portfolio-v3'
+const CACHE_NAME = 'signal-portfolio-v4'
 
 // The shell is cached as an offline fallback only — never as the primary
 // source for a navigation. See the fetch handler.
-const PRECACHE_URLS = ['/', '/index.html', '/manifest.json', '/favicon.svg']
+const PRECACHE_URLS = ['/', '/index.html', '/manifest.json', '/favicon.svg', '/icon-192.png']
 
 self.addEventListener('install', (event) => {
   event.waitUntil(

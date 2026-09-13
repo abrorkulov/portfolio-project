@@ -11,6 +11,10 @@ type Props = {
 
 /** Pixels of drag that count as one card. Tune this first if the feel is off. */
 const DRAG_STEP = 320
+/** Sideways wheel travel that counts as a trackpad swipe, in pixels. */
+const WHEEL_STEP = 60
+/** A wheel gesture is over once the events stop for this long. */
+const WHEEL_GAP = 160
 
 function metrics(width: number) {
   if (width < 640) return { spread: width * 0.78, depth: 150, tilt: 22, blur: 5 }
@@ -149,6 +153,37 @@ export default function Carousel({ cards }: Props) {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
+  }, [index, settle])
+
+  // A two-finger swipe on a trackpad arrives as horizontal wheel events, and
+  // sideways is the direction the deck already moves in. One swipe is one
+  // card; the same silence-then-threshold rule the page gestures use keeps
+  // trackpad inertia from turning one swipe into three.
+  //
+  // The counters live in a ref so that re-binding on a new `index` does not
+  // forget that the current gesture has already been spent.
+  const wheel = useRef({ sum: 0, last: 0, spent: false })
+
+  useEffect(() => {
+    const el = deck.current
+    if (!el) return
+    const onWheel = (event: WheelEvent) => {
+      if (Math.abs(event.deltaX) <= Math.abs(event.deltaY)) return
+      const state = wheel.current
+      const now = performance.now()
+      if (now - state.last > WHEEL_GAP) {
+        state.sum = 0
+        state.spent = false
+      }
+      state.last = now
+      if (state.spent) return
+      state.sum += event.deltaX
+      if (Math.abs(state.sum) < WHEEL_STEP) return
+      state.spent = true
+      settle(index + Math.sign(state.sum))
+    }
+    el.addEventListener('wheel', onWheel, { passive: true })
+    return () => el.removeEventListener('wheel', onWheel)
   }, [index, settle])
 
   const drag = useRef<{ id: number; startX: number; from: number } | null>(null)

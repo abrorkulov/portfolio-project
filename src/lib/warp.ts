@@ -11,12 +11,9 @@ import gsap from 'gsap'
  */
 export const warp = { value: 0 }
 
-/** Kicks the field into a short surge. Called once per page change. */
-export function pulseWarp() {
+/** Kicks the field into a short surge. Called once per page change, and
+    once, longer, when the site first opens. */
+export function pulseWarp(duration = 1.35) {
   gsap.killTweensOf(warp)
-  gsap.fromTo(
-    warp,
-    { value: 1 },
-    { value: 0, duration: 1.35, ease: 'power3.out' },
-  )
+  gsap.fromTo(warp, { value: 1 }, { value: 0, duration, ease: 'power3.out' })
 }

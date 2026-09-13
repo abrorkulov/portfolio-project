@@ -17,6 +17,15 @@ export const corners = {
   name: 'jahongir abrorkulov',
 }
 
+export const meta = {
+  /** The tab title on the front page. Must match the <title> in index.html
+      so nothing flickers between the HTML and the first render. */
+  title: 'Jahongir Abrorkulov - Hello :)',
+  /** The other pages put their label first, so five open tabs can be told
+      apart by their first word. */
+  pageTitle: (label: string) => `${label} — Jahongir Abrorkulov`,
+}
+
 export const home = {
   /** Typed one character at a time, in the script face, very large. */
   greeting: 'Hello',
@@ -117,6 +126,8 @@ export const contact = {
   copy: 'copy',
   copied: 'copied',
   signoff: 'thanks for making it this far :)',
+  /** Prefix of the live line: "right now in tashkent — 23:41 · −3°, snowing". */
+  now: 'right now in tashkent',
 }
 
 export const socials: Social[] = [

@@ -9,7 +9,8 @@ import StudyScene from './scenes/StudyScene'
 import StackScene from './scenes/StackScene'
 import ContactScene from './scenes/ContactScene'
 import { usePageGestures } from './lib/usePageGestures'
-import { pages } from './data/site'
+import { dissolve } from './lib/snowfx'
+import { meta, pages } from './data/site'
 
 const LAST = pages.length - 1
 
@@ -27,23 +28,44 @@ export default function App() {
   // and a wait every time after that.
   const seen = useRef(new Set<number>())
 
-  const go = useCallback((next: number) => {
-    setPage((current) => {
-      const target = Math.max(0, Math.min(LAST, next))
-      seen.current.add(current)
-      return target
-    })
+  // Leaving a page takes its headline apart: the letters come off the
+  // screen as snow and fly past the camera with the page change. It is done
+  // here, at the moment of the request, because by the time the page
+  // unmounts it has already been faded and thrown off the top.
+  const current = useRef(page)
+  current.current = page
+  const leaving = useCallback((target: number) => {
+    if (target === current.current) return
+    document
+      .querySelectorAll<HTMLElement>('.home-word, .home-smile, .scene-title, .about-line')
+      .forEach((el) => dissolve(el))
   }, [])
+
+  const go = useCallback(
+    (next: number) => {
+      leaving(Math.max(0, Math.min(LAST, next)))
+      setPage((current) => {
+        const target = Math.max(0, Math.min(LAST, next))
+        seen.current.add(current)
+        return target
+      })
+    },
+    [leaving],
+  )
 
   // Relative to whatever page is current at the moment the gesture lands, so
   // the gesture listeners never have to be re-bound when the page changes.
-  const step = useCallback((delta: number) => {
-    setPage((current) => {
-      const target = Math.max(0, Math.min(LAST, current + delta))
-      seen.current.add(current)
-      return target
-    })
-  }, [])
+  const step = useCallback(
+    (delta: number) => {
+      leaving(Math.max(0, Math.min(LAST, current.current + delta)))
+      setPage((current) => {
+        const target = Math.max(0, Math.min(LAST, current + delta))
+        seen.current.add(current)
+        return target
+      })
+    },
+    [leaving],
+  )
 
   usePageGestures(step)
 
@@ -52,6 +74,7 @@ export default function App() {
   // through five screens they already saw.
   useEffect(() => {
     window.history.replaceState(null, '', `#${pages[page].id}`)
+    document.title = page === 0 ? meta.title : meta.pageTitle(pages[page].label)
   }, [page])
 
   // Someone editing the hash by hand, or following a link into the site while
@@ -102,6 +125,13 @@ export default function App() {
       </main>
 
       <StepRail page={page} onGo={go} />
+
+      {/* A page change is silent to a screen reader: nothing gains focus and
+          the rail only swaps an aria-current. This is the one place the
+          change is spoken. */}
+      <p className="sr-only" aria-live="polite">
+        {`Page ${page + 1} of ${pages.length}: ${pages[page].label}`}
+      </p>
     </div>
   )
 }

@@ -65,13 +65,13 @@ linked-to hash.
 |---|---|
 | `SceneStage.tsx` | Holds one page and plays the change. Owns the entrance stagger. |
 | `Snow.tsx` | The weather. Two tiled CSS layers plus the lazy WebGL field. |
-| `SnowGL.tsx` | three.js point sprites: the real snow. Lazy, and only where WebGL exists. |
+| `SnowGL.tsx` | three.js point sprites: the real snow, plus the burst pool the page throws flakes into. Lazy, and only where WebGL exists. |
 | `Carousel.tsx` | The study deck — 3D arc, drag, arrows, chips, measured height. |
 | `StepRail.tsx` | The bottom panel, with a highlight that slides between pages. |
 | `Corners.tsx` | Name top-left, `01 ——— 05` page count top-right. On every page. |
-| `Spotlight.tsx` | A pool of milky light that trails the pointer, behind the glass. Fine pointer only. |
+| `Spotlight.tsx` | A pool of milky light that trails the pointer, behind the glass. Also writes `--px/--py` for the parallax. Fine pointer only. |
 | `GlowArrow.tsx` | The one navigation control, in a round and a pill form. |
-| `SceneHeader.tsx` | Numbered eyebrow + title. |
+| `SceneHeader.tsx` | Numbered eyebrow + a title that assembles letter by letter out of a blur. |
 | `BrandIcon.tsx` | Four brand marks, inlined as paths. |
 
 ### `src/lib/`
@@ -80,7 +80,9 @@ linked-to hash.
 |---|---|
 | `useTypewriter.ts` | Types lines one character at a time off a single rAF. |
 | `env.ts` | `prefersReducedMotion`, `canRunWebGL`, `isCompact`. All read live. |
-| `warp.ts` | The one number the snow speeds up by during a page change. |
+| `warp.ts` | The one number the snow speeds up by during a page change (and, longer, on arrival). |
+| `snowfx.ts` | The bridge from the page to the snow: pointer/ripple state, `spark()`, `trail()`, `dissolve(el)`, `useCaretSparks()`. Every call is a no-op until SnowGL has mounted. |
+| `useNow.ts` | Tashkent time (ticks on the minute) and weather (Open-Meteo, no key, once per visit) for the live line on the contact page. |
 | `pointer.ts` | `glass()` — glare + tilt handlers for a pane; `useMagnet()` — pulls `press me !` toward the pointer. |
 | `usePageGestures.ts` | Swipe (touch) and wheel flick (desktop) turn the page. Discrete, never bound to scroll position. |
 
@@ -117,12 +119,15 @@ existing tools cannot cover.
 The handwriting is the whole personality of the front page, and it dies the moment it appears
 twice. If something else needs emphasis, it gets a weight or a size, not the script.
 
-### One colour
+### One colour, and one accent that only the hand brings
 
-Pure black, and a milky off-white (`--milk: #f4f0e8`) at four strengths. **There is no accent
-colour anywhere**, and the brand marks on the contact page are milky at rest — they only find
-their own colour under the pointer. A previous version of this site was teal and violet; that is
-gone on purpose, and a single green chip puts the whole palette back.
+Pure black, and a milky off-white (`--milk: #f4f0e8`) at four strengths. The one accent is ice
+(`--ice: #b7dcff`, `--ice-rgb` for alphas) and it appears **only under the pointer**: the glowing
+edge of a pane, a lit chip, the halo of a hovered button.
+Nothing is ice at rest, so the page keeps its single colour until something is touched. The
+brand marks on the contact page are milky at rest and find their own colour on hover. A previous
+version of this site was teal and violet; that is gone on purpose, and a second accent, or the
+ice used as a fill or as resting type, puts the whole palette back.
 
 Pure `#fff` is deliberately not used for type: against pure black it glares and reads cold.
 
@@ -150,8 +155,11 @@ the compositor re-read their backdrop on every frame.
 
 Every pane (`.stack-card`, `.social-card`, `.deck-face`) carries `.glass`, and the flat ones
 also `.tilt`. `glass()` in `pointer.ts` writes `--mx/--my/--rx/--ry` straight onto the element on
-`pointermove` and the stylesheet draws the glare and the lean — **no React state on hover**. It
-returns `{}` on a coarse pointer, so a phone never binds the handlers.
+`pointermove` and the stylesheet draws the glare (`::after`), the icy edge that lights up where
+the pointer is (`::before`, a radial gradient masked down to a one-pixel ring) and the lean —
+**no React state on hover**. It returns `{}` on a coarse pointer, so a phone never binds the
+handlers. `.deck-face` used to own its `::before` for a lit top edge; that is now an inset
+box-shadow so the glass edge can have the pseudo-element.
 
 Two things follow from `.tilt` owning `transform`:
 
@@ -175,6 +183,21 @@ reverse. At the same moment `pulseWarp()` sends the snow into a short surge past
 that is the part that actually sells the distance. Everything inside a page marked `data-enter`
 is staggered in by `SceneStage`, so a page only has to say which of its blocks are worth
 announcing.
+
+### Home
+
+"Hello" is painted with a gradient clipped to its glyphs so a pass of icy light can run along the
+letters every seven seconds (`sheen`). Because the type is transparent, the glow is a
+`drop-shadow` filter on the `h1`, not a `text-shadow` — a text-shadow would show through the
+letters. The breathing animation is on the `h1` too, so the compositor fades the filtered layer
+instead of re-rastering the filter every frame. On a coarse pointer the filter is one narrow
+shadow and the breathing is off.
+
+### Magnets
+
+`press me !`, both pill arrows and both round deck arrows are pulled toward a nearby pointer by
+`useMagnet`. The magnet always moves a wrapper `span.magnet`, never the button — the button has
+its own transition on `transform`, and the two must not share an element.
 
 ### Reveals that must not strand
 
@@ -204,7 +227,23 @@ a drag would otherwise re-render the page on every `pointermove`. `DRAG_STEP` (3
 the first number to change if the drag feels heavy or twitchy.
 
 Below 640px there is no room for a control column beside a card worth reading, so the arrows drop
-out of their absolute position and back into the chip row.
+out of their absolute position and back into the chip row. **Below 640px the deck is also
+clipped at the screen edge** (`.deck-viewport` bleeds through the shell padding with
+`overflow: hidden`): a phone browser widens its layout viewport to fit the neighbour cards that
+run past the screen, and the whole page zoomed out to 890px. On a coarse pointer there is no
+backdrop filter for that clip to break. An iframe check does not reproduce this — only device
+emulation (`Emulation.setDeviceMetricsOverride` with `mobile: true`) or a real phone does.
+
+### Depth
+
+Two things make the black read as a room rather than a backdrop, and both answer the pointer
+through `--px/--py` (written on `<html>` by `Spotlight`, -1..1, once per frame):
+
+- the **ghost numeral** behind every scene title (`.scene-ghost`, the page index at ~30vw and
+  3.5% opacity), which drifts against the pointer;
+- the **about lines**, each on its own `--depth` and sliding a little further than the one above.
+
+On a phone there is no pointer, so both simply stand still.
 
 ### Phones
 
@@ -220,12 +259,40 @@ the camera — happen **in the vertex shader**: doing them in JavaScript would m
 thousands of floats and re-uploading the position buffer every frame. Pointer position lives in a
 local, never in state, for the same reason.
 
+The snow answers the page, and every one of those answers goes through `lib/snowfx.ts`:
+
+- **The pointer pushes the field apart** and the flakes it touches glow — done in screen space
+  in the vertex shader after projection, so near and far flakes both move. Fine pointers only.
+- **A tap sends a ring** through the field (`ripple`), any pointer, plus a few sparks.
+- **A moving pointer leaves a wake** (`trail()`): two flakes per move, drifting down.
+- **Bursts** are a second `Points` with a 4096-entry ring buffer. Each flake is stamped with its
+  birth time and integrates its own path on the GPU, so a burst costs one buffer upload and
+  nothing per frame. Sizes are roughly double the falling snow's: the burst plane (`BURST_Z`)
+  is twice as far as where the visible flakes are.
+- **`dissolve(el)`** rasterises an element's text with its computed font (and letter-spacing)
+  onto a canvas, samples it on a grid and throws the samples outward and toward the camera.
+  `App` calls it on every headline — `.home-word`, `.home-smile`, `.scene-title`,
+  `.about-line` — at the moment a page change is requested, not on unmount, because by then the
+  page has already been faded and thrown off the top.
+- **`useCaretSparks`** fires a spark from the caret whenever the typed count grows. 36 flakes
+  per letter of "Hello", 5 per character on the about page.
+
+On arrival SnowGL calls `pulseWarp(2.8)`: the field rushes past the camera while the first word
+is being written.
+
 The tiled CSS layers in `Snow.tsx` paint on the first frame and never leave. They are the only
 snow a reduced-motion or software-rendered visitor sees, and they give the GL field something to
 fall in front of while its chunk arrives.
 
-There is deliberately **no comet / shooting star**. It was there, and it was asked for to be
-removed.
+There is deliberately **no comet / shooting star**, **no fog behind the snow** and **no drawn
+cursor**. All three were there, and each was asked for to be removed: the black and the snow
+alone are the background, and the system pointer is the pointer.
+
+### The live line
+
+The contact page ends with "right now in tashkent — 19:37 · −3°, snowing". `useNow` renders the
+clock only once it has a value, so the line never flashes a bare prefix; the weather is a single
+Open-Meteo request per visit and the line simply carries the time alone if it fails.
 
 ---
 
@@ -238,8 +305,9 @@ removed.
   that can never paint a frame of it.
 - **The Google Fonts `<link>` must not block rendering.** It loads as `media="print"` and is
   promoted on load, with a `<noscript>` fallback.
-- **Nothing decorative runs per-frame through React.** The snow's pointer, the warp value and the
-  deck position are all plain objects read by the render loop.
+- **Nothing decorative runs per-frame through React.** The snow's pointer, the warp value, the
+  deck position and the parallax properties are all plain objects or inline styles written
+  outside React.
 
 First paint is HTML + CSS (~3.5 kB gz) + `index` (~81 kB gz). `SnowGL` (~118 kB gz) arrives after,
 and only where WebGL exists and reduced-motion is off.
@@ -267,6 +335,12 @@ Checked in a real rendering engine (headless Chrome against `npm run preview`) a
   runs off the edge of the page as intended.
 - At 390px: the deck fits one screen, the arrows sit in the chip row, and nothing is clipped —
   the page is allowed to scroll if a card runs long.
+
+Interactive behaviour (skip-on-click, the deck's trackpad swipe, the dissolve, the pointer
+wake) was driven over CDP from a Node script using the built-in `WebSocket` — no puppeteer —
+against `--headless=new --use-angle=swiftshader`, which does run rAF and WebGL. The Chrome
+extension's automation tab sits in a background window, so rAF never ticks there and every GSAP
+tween looks frozen: it is not a bug in the site.
 
 Two notes for whoever verifies this next, both of which cost time:
 

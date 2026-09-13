@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import BrandIcon from '../components/BrandIcon'
 import SceneHeader from '../components/SceneHeader'
 import { glass } from '../lib/pointer'
+import { useNow } from '../lib/useNow'
 import { contact, socials } from '../data/site'
 import type { Social } from '../data/site'
 
@@ -17,6 +18,7 @@ const BRAND: Record<Social['id'], string> = {
 export default function ContactScene() {
   const lit = glass(4)
   const [copied, setCopied] = useState<Social['id'] | null>(null)
+  const now = useNow()
 
   useEffect(() => {
     if (!copied) return
@@ -85,9 +87,22 @@ export default function ContactScene() {
         ))}
       </div>
 
-      <p className="scene-signoff" data-enter="">
-        {contact.signoff}
-      </p>
+      <div className="scene-foot" data-enter="">
+        <p className="scene-signoff">{contact.signoff}</p>
+        {/* The clock is rendered only once it has a value, so the line never
+            flashes a bare prefix on the first frame. */}
+        {now.time ? (
+          <p className="scene-now">
+            <span className="scene-now-dot" aria-hidden="true" />
+            {contact.now}
+            <span className="scene-now-sep" aria-hidden="true">
+              —
+            </span>
+            <time>{now.time}</time>
+            {now.sky ? <span className="scene-now-sky">· {now.sky}</span> : null}
+          </p>
+        ) : null}
+      </div>
     </div>
   )
 }

@@ -13,6 +13,10 @@ import { prefersReducedMotion } from '../lib/env'
  *
  * Positioned with a transform written by gsap, never through React. A phone
  * has no pointer to follow, so it gets nothing at all.
+ *
+ * This is also where the pointer becomes the two custom properties the
+ * ghost numerals and the about lines read for their parallax — `--px` and
+ * `--py`, -1..1, written on <html> at most once per frame.
  */
 export default function Spotlight() {
   const el = useRef<HTMLDivElement>(null)
@@ -25,9 +29,22 @@ export default function Spotlight() {
     const toY = gsap.quickTo(node, 'y', { duration: 1.1, ease: 'power3.out' })
     let shown = false
 
+    const root = document.documentElement
+    let frame = 0
+    let px = 0
+    let py = 0
+    const writeParallax = () => {
+      frame = 0
+      root.style.setProperty('--px', px.toFixed(3))
+      root.style.setProperty('--py', py.toFixed(3))
+    }
+
     const onMove = (event: PointerEvent) => {
       toX(event.clientX)
       toY(event.clientY)
+      px = (event.clientX / window.innerWidth) * 2 - 1
+      py = (event.clientY / window.innerHeight) * 2 - 1
+      if (!frame) frame = requestAnimationFrame(writeParallax)
       if (!shown) {
         shown = true
         gsap.to(node, { opacity: 1, duration: 1.4, ease: 'power2.out' })
@@ -41,6 +58,9 @@ export default function Spotlight() {
     window.addEventListener('pointermove', onMove, { passive: true })
     document.documentElement.addEventListener('pointerleave', onLeave)
     return () => {
+      cancelAnimationFrame(frame)
+      root.style.removeProperty('--px')
+      root.style.removeProperty('--py')
       window.removeEventListener('pointermove', onMove)
       document.documentElement.removeEventListener('pointerleave', onLeave)
     }
