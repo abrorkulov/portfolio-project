@@ -144,11 +144,11 @@ export const BODIES: Record<BodyId, Body> = {
     au: 39.48,
     lon0: 238.93,
     rate: 0.00397,
-    tilt: 57,
+    tilt: 15,
     spin: 0.004,
     tint: [0.42, 0.36, 0.3],
     haze: [0.5, 0.6, 0.85],
-    hazeAmount: 0.16,
+    hazeAmount: 0.42,
   },
 }
 

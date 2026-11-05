@@ -130,6 +130,16 @@ cite {
   display: block;
 }
 
+/* Sized to the largest viewport on a phone, so the address bar sliding away uncovers
+   more of the same picture instead of resizing it. */
+@media (pointer: coarse) {
+  .space {
+    bottom: auto;
+    height: 100vh;
+    height: 100lvh;
+  }
+}
+
 .still {
   position: absolute;
   inset: 0;
@@ -202,8 +212,8 @@ cite {
 
 .pin-label {
   position: absolute;
-  left: 16px;
-  top: -9px;
+  left: 14px;
+  top: -14px;
   display: flex;
   flex-direction: column;
   white-space: nowrap;
@@ -211,9 +221,9 @@ cite {
   font-size: 10.5px;
   line-height: 1.5;
   color: var(--star-2);
-  text-shadow:
-    0 0 3px #000,
-    0 0 10px #000;
+  padding: 3px 7px;
+  border-radius: 3px;
+  background: rgba(5, 6, 10, 0.62);
 }
 
 .pin-label b {
@@ -1151,13 +1161,39 @@ a:hover .arrow {
     width: 100%;
   }
 
+  /* Long and eased. A short ramp reads as a straight line ruled across the planet. */
   .panel::before {
     content: '';
     position: absolute;
-    inset: -70px -20px -40px;
+    inset: -170px -20px -40px;
     z-index: -1;
-    background: linear-gradient(transparent, rgba(5, 6, 10, 0.86) 70px, rgba(5, 6, 10, 0.92));
+    background: linear-gradient(
+      transparent,
+      rgba(5, 6, 10, 0.12) 40px,
+      rgba(5, 6, 10, 0.34) 80px,
+      rgba(5, 6, 10, 0.62) 120px,
+      rgba(5, 6, 10, 0.84) 160px,
+      rgba(5, 6, 10, 0.92) 210px
+    );
     pointer-events: none;
+  }
+
+  .readout-from {
+    display: none;
+  }
+
+  .kind,
+  .tools,
+  .hero-note,
+  .also small,
+  .credits {
+    font-size: 11.5px;
+    color: var(--star-2);
+  }
+
+  .spec > div,
+  .layers > div {
+    grid-template-columns: 96px 1fr;
   }
 
   .stop-hero .stop-hold {

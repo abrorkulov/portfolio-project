@@ -24,7 +24,7 @@ export type PointCloud = {
 const WARM: [number, number, number] = [1, 0.79, 0.58]
 const PALE: [number, number, number] = [0.92, 0.88, 0.82]
 const COOL: [number, number, number] = [0.66, 0.77, 1]
-const DUSTY: [number, number, number] = [0.86, 0.52, 0.44]
+const DUSTY: [number, number, number] = [0.9, 0.46, 0.4]
 
 const PITCH = Math.tan((17 * Math.PI) / 180)
 const BAR = 0.45
@@ -63,7 +63,7 @@ export function makeMilkyWay(count: number): PointCloud {
       y = a * Math.sin(BAR) + b * Math.cos(BAR)
       z = gauss() * 0.5
       c = rand() < 0.75 ? WARM : PALE
-      energy = 0.042 + rand() * 0.034
+      energy = 0.036 + rand() * 0.028
     } else {
       const r = Math.min(19, 1.5 - Math.log(1 - rand() * 0.995) * 3.3)
       const inArm = rand() < 0.62
@@ -99,6 +99,8 @@ export function makeMilkyWay(count: number): PointCloud {
         energy *= 2.5
       }
       energy *= 0.55 + 0.45 * Math.exp(-r / 9)
+      // The inner arms are all light in a small space, and read as white ribbons.
+      if (r < 6) energy *= 0.5 + r / 12
     }
 
     if (haze) {

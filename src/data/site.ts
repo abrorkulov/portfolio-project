@@ -67,15 +67,18 @@ export const legs = [
   { line: 'The Moon. 384,400 km.', sub: 'Light crosses that in 1.3 seconds.' },
   {
     line: 'What I have shipped, in the order you reach it.',
-    sub: 'Mars first. 228 million km from the Sun.',
+    sub: 'That is the Sun. Mars comes first, 228 million km from it.',
   },
-  { line: 'Jupiter.', sub: '778 million km from the Sun. Sunlight takes 43 minutes to get here.' },
+  {
+    line: 'Through the asteroid belt.',
+    sub: 'Jupiter next: 778 million km from the Sun. Sunlight takes 43 minutes.',
+  },
   { line: 'Saturn.', sub: '1.4 billion km. Sunlight takes 79 minutes.' },
   { line: 'Uranus.', sub: '2.9 billion km. It rolls around the Sun on its side.' },
   { line: 'Neptune.', sub: '4.5 billion km. The Sun is just a very bright star now.' },
   {
-    line: 'The last light of the Sun.',
-    sub: '5.9 billion km. Past the last planet, I take things apart.',
+    line: 'That bright star is the Sun.',
+    sub: '5.9 billion km behind us. Past the last planet, I take things apart.',
   },
   { line: 'Leaving.', sub: 'From here on, everything you can see is a star.' },
   { line: 'The Milky Way is a dot now.', sub: 'One of about two trillion.' },
@@ -256,14 +259,14 @@ export const contact = {
   now: 'Now in Tashkent',
   back: 'Return to Tashkent',
   credits:
-    'Rendered live in your browser with raw WebGL2. Planet maps from NASA data; Solar System Scope, CC BY 4.0.',
+    'Rendered live in your browser with raw WebGL2. The 9,096 brightest stars are real and in their real places (Yale Bright Star Catalog). Planet and sky maps from NASA data, Solar System Scope, CC BY 4.0. Pluto: NASA, New Horizons.',
   source: 'https://github.com/abrorkulov/portfolio-project',
   sourceLabel: 'Site source',
 }
 
 export const socials: Social[] = [
-  { id: 'telegram', label: 'Telegram', handle: '@ejodocome', href: 'https://t.me/ejodocome' },
-  { id: 'github', label: 'GitHub', handle: 'abrorkulov', href: GH },
+  { id: 'telegram', label: 'Telegram', handle: '@ejodocome', href: 'https://t.me/abrorkulov' },
+  { id: 'github', label: 'GitHub', handle: 'abrorkulov', href: 'https://github.com/abrorkulov' },
   {
     id: 'linkedin',
     label: 'LinkedIn',

@@ -12,13 +12,17 @@ import {
   norm,
   sub,
 } from './solar'
-import type { BodyId, Pose, Vec3, World } from './solar'
-import { LAST_SOLAR, blendPose, ease, solarPoses } from './path'
+import type { Body, BodyId, Pose, Vec3, World } from './solar'
+import { LAST_SOLAR, blendPose, ease, placeMoons, solarPoses } from './path'
+import type { Moon } from './path'
+import { STAR_STRIDE, eclipticToGalactic, makeFaintStars, parseCatalog } from './starfield'
 import { makeDeepField, makeMilkyWay } from './galaxy'
 import type { PointCloud } from './galaxy'
 import {
   BODY,
   COMPOSITE,
+  ROCK_FRAG,
+  ROCK_VERT,
   DEEP_FRAG,
   DEEP_VERT,
   DOWN,
@@ -72,6 +76,7 @@ const MAPS: Record<string, string> = {
   'saturn-ring': 'saturn-ring.webp',
   uranus: 'uranus.webp',
   neptune: 'neptune.webp',
+  pluto: 'pluto.webp',
 }
 
 /** What each stop needs, loaded as the camera nears it rather than all up front. */
@@ -83,6 +88,7 @@ const NEEDS: string[][] = [
   ['saturn', 'saturn-ring'],
   ['uranus'],
   ['neptune'],
+  ['pluto'],
 ]
 
 const BODY_LOOK: Partial<
@@ -92,9 +98,9 @@ const BODY_LOOK: Partial<
   mars: { relief: 1.8, detail: 0.2, flat: 0.25, banded: 0 },
   jupiter: { relief: 0, detail: 0, flat: 0, banded: 1 },
   saturn: { relief: 0, detail: 0, flat: 0, banded: 1 },
-  uranus: { relief: 0, detail: 0, flat: 0, banded: 1 },
-  neptune: { relief: 0, detail: 0, flat: 0, banded: 1 },
-  pluto: { relief: 0, detail: 0.5, flat: 0.7, banded: 0 },
+  uranus: { relief: 0, detail: 0, flat: 0, banded: 0.4 },
+  neptune: { relief: 0, detail: 0, flat: 0, banded: 0.4 },
+  pluto: { relief: 1.4, detail: 0.2, flat: 0.55, banded: 0 },
 }
 
 function compile(gl: WebGL2RenderingContext, vert: string, frag: string, defines = ''): Program {
@@ -160,57 +166,80 @@ export function createSpace(options: SpaceOptions): Space | null {
     body: compile(gl, FULLSCREEN, BODY),
     galaxy: compile(gl, GALAXY_VERT, GALAXY_FRAG),
     deep: compile(gl, DEEP_VERT, DEEP_FRAG),
+    rock: compile(gl, ROCK_VERT, ROCK_FRAG),
     down: compile(gl, FULLSCREEN, DOWN),
     up: compile(gl, FULLSCREEN, UP),
     composite: compile(gl, FULLSCREEN, COMPOSITE),
   }
 
   const emptyVao = gl.createVertexArray()
+  let disposed = false
 
-  // --- stars: real stars do not move with parallax at these distances, so the
-  // whole sky is one static buffer of directions ---------------------------------
-  const STAR_COUNT = compact ? 5000 : 11000
-  const starVao = gl.createVertexArray()!
-  gl.bindVertexArray(starVao)
+  // --- stars: at these distances nothing moves with parallax, so each sky is one
+  // static buffer of directions, drawn as instanced quads --------------------------------
   const corner = gl.createBuffer()
   gl.bindBuffer(gl.ARRAY_BUFFER, corner)
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW)
-  gl.enableVertexAttribArray(0)
-  gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0)
-  {
-    const data = new Float32Array(STAR_COUNT * 5)
-    let seed = 42
-    const r = () => {
-      seed = (seed * 1664525 + 1013904223) >>> 0
-      return seed / 4294967296
-    }
-    for (let i = 0; i < STAR_COUNT; i++) {
-      const z = r() * 2 - 1
-      const a = r() * Math.PI * 2
-      const s = Math.sqrt(1 - z * z)
-      data[i * 5] = Math.cos(a) * s
-      data[i * 5 + 1] = Math.sin(a) * s
-      data[i * 5 + 2] = z
-      // Most stars are faint: brightness runs roughly as a power law.
-      data[i * 5 + 3] = Math.pow(r(), 5.5)
-      data[i * 5 + 4] = r()
-    }
+  const makeStarVao = (data: Float32Array) => {
+    const vao = gl.createVertexArray()!
+    gl.bindVertexArray(vao)
+    gl.bindBuffer(gl.ARRAY_BUFFER, corner)
+    gl.enableVertexAttribArray(0)
+    gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0)
     const buffer = gl.createBuffer()
     gl.bindBuffer(gl.ARRAY_BUFFER, buffer)
     gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW)
+    const stride = STAR_STRIDE * 4
     gl.enableVertexAttribArray(1)
-    gl.vertexAttribPointer(1, 3, gl.FLOAT, false, 20, 0)
+    gl.vertexAttribPointer(1, 3, gl.FLOAT, false, stride, 0)
     gl.vertexAttribDivisor(1, 1)
     gl.enableVertexAttribArray(2)
-    gl.vertexAttribPointer(2, 2, gl.FLOAT, false, 20, 12)
+    gl.vertexAttribPointer(2, 3, gl.FLOAT, false, stride, 12)
     gl.vertexAttribDivisor(2, 1)
+    gl.enableVertexAttribArray(3)
+    gl.vertexAttribPointer(3, 1, gl.FLOAT, false, stride, 24)
+    gl.vertexAttribDivisor(3, 1)
+    gl.bindVertexArray(null)
+    return vao
+  }
+  const FAINT_COUNT = compact ? 30000 : 70000
+  const faintVao = makeStarVao(makeFaintStars(FAINT_COUNT))
+  let catalog: { vao: WebGLVertexArrayObject; count: number } | null = null
+  void fetch(base + 'stars.bin')
+    .then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(new Error('stars'))))
+    .then((buffer) => {
+      if (disposed) return
+      const parsed = parseCatalog(buffer)
+      catalog = { vao: makeStarVao(parsed.data), count: parsed.count }
+    })
+    .catch(() => {
+      /* the generated stars carry the sky by themselves */
+    })
+  const galactic = eclipticToGalactic()
+
+  // Rocks for the asteroid belt: seeds only, the shader decides where they are.
+  const ROCK_COUNT = compact ? 700 : 1600
+  const rockVao = gl.createVertexArray()!
+  gl.bindVertexArray(rockVao)
+  {
+    const seeds = new Float32Array(ROCK_COUNT * 4)
+    let s = 7
+    const r = () => {
+      s = (s * 1664525 + 1013904223) >>> 0
+      return s / 4294967296
+    }
+    for (let i = 0; i < ROCK_COUNT * 4; i++) seeds[i] = r()
+    const buffer = gl.createBuffer()
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer)
+    gl.bufferData(gl.ARRAY_BUFFER, seeds, gl.STATIC_DRAW)
+    gl.enableVertexAttribArray(0)
+    gl.vertexAttribPointer(0, 4, gl.FLOAT, false, 0, 0)
   }
   gl.bindVertexArray(null)
 
   // --- maps --------------------------------------------------------------------
   const textures = new Map<string, WebGLTexture>()
   const loading = new Set<string>()
-  let disposed = false
 
   const loadMap = (name: string) => {
     if (textures.has(name) || loading.has(name) || !MAPS[name]) return
@@ -294,7 +323,7 @@ export function createSpace(options: SpaceOptions): Space | null {
   let cssH = 1
   let quality = 1
   let portrait = false
-  const maxDpr = compact ? 1.25 : 1.5
+  const maxDpr = compact ? 1.75 : 1.5
 
   const resize = () => {
     const rect = canvas.getBoundingClientRect()
@@ -330,8 +359,33 @@ export function createSpace(options: SpaceOptions): Space | null {
   // --- the route ---------------------------------------------------------------
   let world: World = makeWorld(new Date())
   let poses: Pose[] = []
+  let moons: Moon[] = []
+  // Pluto is turned so its heart faces the camera at the moment we get there.
+  let plutoSpin = 0
+  // Uranus's rings are threads: edge-on they vanish, so its axis is set from the shot.
+  let uranusFrame: number[] = bodyFrame(BODIES.uranus.tilt, 0)
   const rebuildPoses = () => {
-    poses = solarPoses(world, portrait)
+    poses = solarPoses(world, portrait, cssW / cssH)
+    moons = placeMoons(poses, portrait)
+    const c = norm(sub(poses[LAST_SOLAR].position, poses[LAST_SOLAR].anchor))
+    const t = (BODIES.pluto.tilt * Math.PI) / 180
+    plutoSpin = Math.atan2(c[1] * Math.cos(t) - c[2] * Math.sin(t), c[0]) + 0.1
+    const shot = poses[5]
+    const shotRight = norm(cross(shot.forward, shot.up))
+    const pole = norm(add(add(mul(shot.forward, -0.46), mul(shot.up, 0.74)), mul(shotRight, 0.5)))
+    const axisX = norm(cross(pole, [0, 0, 1]))
+    const axisY = cross(pole, axisX)
+    uranusFrame = [
+      axisX[0],
+      axisY[0],
+      pole[0],
+      axisX[1],
+      axisY[1],
+      pole[1],
+      axisX[2],
+      axisY[2],
+      pole[2],
+    ]
   }
 
   const milky = { cloud: null as PointCloud | null, vao: null as WebGLVertexArrayObject | null }
@@ -438,8 +492,12 @@ export function createSpace(options: SpaceOptions): Space | null {
     }
 
     // Quality falls before frame rate does. One-way, so the picture never pulses.
-    frames++
-    if (dt > 0.03) slow++
+    // Only while moving. Holding still is deliberately half rate, and counting that as
+    // slow would drop every machine to minimum resolution just for standing still.
+    if (!holding) {
+      frames++
+      if (dt > 0.03) slow++
+    }
     if (frames === 80) {
       if (slow > 44 && quality > 0.6) {
         quality = Math.max(0.6, quality - 0.2)
@@ -474,7 +532,8 @@ export function createSpace(options: SpaceOptions): Space | null {
     const stopFloat = Math.min(at, LAST_SOLAR)
     const i0 = Math.floor(stopFloat)
     const i1 = Math.min(i0 + 1, LAST_SOLAR)
-    let pose = i0 === i1 ? poses[i0] : blendPose(poses[i0], poses[i1], stopFloat - i0)
+    let pose =
+      i0 === i1 ? poses[i0] : blendPose(poses[i0], poses[i1], stopFloat - i0, i0 === 1 || i0 === 6)
 
     // Arrival: falling toward orbit from further out, the only unscrolled move.
     const sinceReady = ready ? (now - readyAt) / 1000 : 0
@@ -515,6 +574,7 @@ export function createSpace(options: SpaceOptions): Space | null {
     setRay(programs.sky, view)
     bind(0, textures.get('stars'), programs.sky.u('uMap'))
     gl.uniform1f(programs.sky.u('uReady'), textures.has('stars') ? 1 : 0)
+    gl.uniformMatrix3fv(programs.sky.u('uGal'), false, galactic)
     const skyLevel = pose.sky * (1 - smooth(0.1, 0.55, gal))
     gl.uniform1f(programs.sky.u('uSky'), skyLevel)
     fullscreen()
@@ -530,8 +590,12 @@ export function createSpace(options: SpaceOptions): Space | null {
       gl.uniform1f(programs.stars.u('uSky'), starsLevel)
       gl.uniform1f(programs.stars.u('uWarp'), warpNow)
       gl.uniform1f(programs.stars.u('uDpr'), height / cssH)
-      gl.bindVertexArray(starVao)
-      gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, STAR_COUNT)
+      gl.bindVertexArray(faintVao)
+      gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, FAINT_COUNT)
+      if (catalog) {
+        gl.bindVertexArray(catalog.vao)
+        gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, catalog.count)
+      }
       gl.bindVertexArray(emptyVao)
     }
 
@@ -548,16 +612,30 @@ export function createSpace(options: SpaceOptions): Space | null {
 
       // Far to near, each scissored to its own disc so a distant planet costs
       // a few pixels and only the one filling the screen costs a full screen.
-      const order = (Object.keys(BODIES) as BodyId[])
-        .map((id) => ({ id, d: len(sub(world.positions[id], pose.position)) }))
-        .sort((a, b) => b.d - a.d)
+      const order: { id: string; body: Body; at: Vec3; d: number }[] = (
+        Object.keys(BODIES) as BodyId[]
+      ).map((id) => ({
+        id,
+        body: BODIES[id],
+        at: world.positions[id],
+        d: len(sub(world.positions[id], pose.position)),
+      }))
+      for (const m of moons) {
+        if (m.stop !== i0 && m.stop !== i1) continue
+        order.push({
+          id: 'moonlet',
+          body: { ...BODIES.moon, radius: m.radius, tint: m.tint, tilt: 0, spin: 0 },
+          at: m.position,
+          d: len(sub(m.position, pose.position)),
+        })
+      }
+      order.sort((a, b) => b.d - a.d)
       const pixel = (2 * tan) / height
       gl.enable(gl.SCISSOR_TEST)
-      for (const { id, d } of order) {
-        const body = BODIES[id]
-        const rel = sub(world.positions[id], pose.position)
+      for (const { id, body, at: where, d } of order) {
+        const rel = sub(where, pose.position)
         const z = dot(rel, forward)
-        const outer = id === 'saturn' ? 2.4 : id === 'earth' ? 1.05 : 1.14
+        const outer = id === 'saturn' ? 2.4 : id === 'uranus' ? 2.15 : id === 'earth' ? 1.05 : 1.14
         const reach = body.radius * outer
         const inside = d < reach * 1.6
         if (z <= 0 && !inside) continue
@@ -583,7 +661,7 @@ export function createSpace(options: SpaceOptions): Space | null {
         }
         gl.scissor(sx, sy, sw, sh)
 
-        const sun = norm(mul(world.positions[id], -1))
+        const sun = norm(mul(where, -1))
         const isNearEarth = id === 'earth' && d < 1800
         const prog = isNearEarth ? programs.earth : programs.body
         gl.useProgram(prog.p)
@@ -617,15 +695,23 @@ export function createSpace(options: SpaceOptions): Space | null {
             continue
           }
         } else {
-          gl.uniformMatrix3fv(prog.u('uM'), false, bodyFrame(body.tilt, time * body.spin + 1.7))
+          const spin = id === 'pluto' ? plutoSpin + time * 0.0004 : time * body.spin + 1.7
+          gl.uniformMatrix3fv(
+            prog.u('uM'),
+            false,
+            id === 'uranus' ? uranusFrame : bodyFrame(body.tilt, spin),
+          )
         }
 
-        const look = BODY_LOOK[id] ?? { relief: 0, detail: 0, flat: 0, banded: 0 }
+        const look = BODY_LOOK[id as BodyId] ?? { relief: 0, detail: 0, flat: 0.7, banded: 0 }
         const map = textures.get(id)
         bind(0, map, prog.u('uMap'))
         bind(1, textures.get('saturn-ring'), prog.u('uRing'))
         gl.uniform1f(prog.u('uHasMap'), map ? 1 : 0)
-        gl.uniform1f(prog.u('uHasRing'), id === 'saturn' && textures.has('saturn-ring') ? 1 : 0)
+        const ringKind =
+          id === 'saturn' && textures.has('saturn-ring') ? 1 : id === 'uranus' ? 2 : 0
+        gl.uniform1f(prog.u('uHasRing'), ringKind > 0 ? 1 : 0)
+        gl.uniform1f(prog.u('uRingKind'), ringKind)
         gl.uniform3fv(prog.u('uTint'), body.tint)
         gl.uniform3fv(prog.u('uHaze'), body.haze)
         gl.uniform1f(prog.u('uHazeAmount'), body.hazeAmount)
@@ -636,6 +722,28 @@ export function createSpace(options: SpaceOptions): Space | null {
         fullscreen()
       }
       gl.disable(gl.SCISSOR_TEST)
+    }
+
+    // The asteroid belt, in the middle of the flight from Mars to Jupiter.
+    const belt = smooth(2.1, 2.3, at) * (1 - smooth(2.7, 2.9, at))
+    if (belt > 0.002) {
+      gl.useProgram(programs.rock.p)
+      gl.uniform2f(programs.rock.u('uRes'), width, height)
+      gl.uniform1f(programs.rock.u('uTan'), tan)
+      gl.uniform2f(programs.rock.u('uShift'), shift[0], shift[1])
+      gl.uniform1f(programs.rock.u('uTravel'), at * 6)
+      gl.uniform1f(programs.rock.u('uLevel'), belt)
+      gl.uniform1f(programs.rock.u('uDpr'), height / cssH)
+      const toSun = norm(mul(pose.position, -1))
+      gl.uniform3f(
+        programs.rock.u('uSunView'),
+        dot(toSun, right),
+        dot(toSun, up),
+        -dot(toSun, forward),
+      )
+      gl.bindVertexArray(rockVao)
+      gl.drawArrays(gl.POINTS, 0, ROCK_COUNT)
+      gl.bindVertexArray(emptyVao)
     }
 
     // --- the second camera: kiloparsecs ---------------------------------------
@@ -784,7 +892,13 @@ export function createSpace(options: SpaceOptions): Space | null {
   canvas.addEventListener('webglcontextlost', onContextLost)
 
   let resizeTimer = 0
+  let lastWidth = window.innerWidth
   const onResize = () => {
+    // A phone's address bar sliding away reports as a resize, once per scroll. Rebuilding
+    // every buffer for that hitches the page and jumps the planet, so a finger only
+    // counts a change of width. The canvas is sized to the largest viewport to match.
+    if (coarse && window.innerWidth === lastWidth) return
+    lastWidth = window.innerWidth
     window.clearTimeout(resizeTimer)
     resizeTimer = window.setTimeout(() => {
       width = 0

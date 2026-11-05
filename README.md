@@ -21,5 +21,5 @@ npm run preview  # http://localhost:4173
 
 ## Credits
 
-Planet and star maps: [Solar System Scope](https://www.solarsystemscope.com/textures/), from NASA
-data, CC BY 4.0, via Wikimedia Commons. Pluto is drawn procedurally.
+Planet and sky maps: [Solar System Scope](https://www.solarsystemscope.com/textures/), from NASA
+data, CC BY 4.0, via Wikimedia Commons. Pluto: NASA, New Horizons. Stars: Yale Bright Star Catalog.

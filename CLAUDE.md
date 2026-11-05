@@ -78,6 +78,7 @@ public/sw.js          Service worker. Read the fetch-handler comment before touc
 | `engine.ts` | The WebGL2 loop: passes, textures, adaptive quality, telemetry. |
 | `shaders.ts` | All GLSL. Sky, stars, Sun, Earth, other bodies, galaxy, deep field, bloom, composite. |
 | `galaxy.ts` | The seeded Milky Way and deep-field point clouds. |
+| `starfield.ts` | The sky: the real catalog plus generated faint stars, and the ecliptic-to-galactic rotation. |
 
 ### `src/lib/`
 
@@ -110,7 +111,7 @@ React), `x86.ts` (the emulator), `useNow.ts` (Tashkent time and weather), `env.t
 
 Claims are the point of this site, so this is worth being exact about.
 
-**Real:** Earth's spin and day/night to the minute (GMST + the Sun's mean longitude, the subsolar point has
+**Real:** The 9,096 brightest stars (Yale Bright Star Catalog, `public/space/stars.bin`) in their true positions, brightness and colour, and the Milky Way panorama, aligned through the true galactic rotation. Pluto's map (NASA, New Horizons). Earth's spin and day/night to the minute (GMST + the Sun's mean longitude, the subsolar point has
 been checked against the clock). Planet longitudes for the date (mean elements, circular orbits, good to a few
 degrees). Every distance and light-time in the readout. The bytes and instructions in the crackme.
 
@@ -118,15 +119,21 @@ degrees). Every distance and light-time in the readout. The bytes and instructio
 - The Moon is at half its real distance and held at a fixed angle to the Sun, so Earthrise is never a dark disc.
 - Clouds are a fixed map that drifts slowly, not today's weather.
 - Atmosphere shell is thickened threefold, with coefficients scaled to keep the colour, or it would not show.
-- **Pluto is drawn procedurally.** No free map at this resolution was found.
+- Fainter stars are generated (`starfield.ts`), thickening toward the true galactic plane.
+- New Horizons never saw Pluto's south. `pluto.webp` fills it with dim averaged terrain, and the camera faces the heart.
+- The asteroid belt is far denser than the real one, which is nearly empty. It is a moment, not a measurement.
+- Moons sit at real orbital distances, but where along the orbit is chosen for the shot.
+- Uranus's axis is set from the shot so its rings are open, and the Sun is always placed right of frame.
+- Each planet's camera slides around the planet-Sun line to find the Milky Way (`skyScore`). Lighting is unchanged and
+  the sky is never moved, so the framing differs slightly by date.
 
 **Everything about Jahongir must be checkable against a public repo.** No metrics, client names or tools he has
 not used. And check a `*.vercel.app` URL is his before linking it: `hackaton`, `job-finder`, `farm-platform`,
 `sotuv-sayt`, `hamshirago-web` and `bozor-marketplace` on vercel.app all belong to strangers. Compare against the
 repo's stack and `<title>`. JobFinder links to source only, because its live `/jobs` calls `localhost:5000`.
 
-**Texture credit is a licence condition, not a courtesy:** the maps are Solar System Scope, CC BY 4.0, via
-Wikimedia Commons. The line in `contact.credits` must stay.
+**Texture credit is a licence condition, not a courtesy:** the planet and sky maps are Solar System Scope, CC BY 4.0, via
+Wikimedia Commons. Pluto is NASA (public domain). The star catalog is the Yale BSC5. The line in `contact.credits` must stay.
 
 ---
 
@@ -159,6 +166,14 @@ Each of these happened, and each comes back the moment someone tidies the code:
 - **Reduced motion is `transition: none`, not `0.01ms`.** A tiny duration still starts a transition on every property.
 - **The crackme's verdict is reported from one effect watching `cpu`**, never from a state updater: StrictMode runs
   updaters twice.
+- **Adaptive quality must not measure the deliberately skipped frames.** Half-rate holding at 60 Hz reads as 33 ms a
+  frame, and counting it dropped every machine to minimum resolution just for standing still.
+- **On a touch device only a change of width counts as a resize.** The address bar sliding away fires `resize` on every
+  scroll direction change. Rebuilding for it hitches and jumps the planet. Emulation does not show this; a real phone does.
+- **Phone framing is fitted, not scaled** (`fittedDistance`). A phone sees about 14 degrees across where a laptop sees 48.
+- **Scrims under text need a long eased ramp.** A short one reads as a straight line ruled across the planet.
+- **The sky panorama is flipped:** galactic longitude runs left and south is at the top. Checked against where the
+  Magellanic Clouds fall. Its own stars were removed offline, because at this field of view they are soft blobs.
 - **Galaxy particle size is capped while inside the disc.** Uncapped, nearby ones become blurry dinner plates and the
   screen turns to white soup.
 
@@ -213,6 +228,5 @@ Driven over CDP from a Node script using the built-in `WebSocket` (no puppeteer)
 
 1. **Real screenshots for HamshiraGo.** Set `image` on the project in `site.ts`.
 2. **Connect JobFinder's production API**, then add its `live` URL.
-3. **A real map of Pluto**, if one with a free licence turns up (`MAPS` and `NEEDS` in `engine.ts`).
-4. **Decide about `api/contact.ts`.** Nothing posts to it. Either bring a form back or delete the file and its two
+3. **Decide about `api/contact.ts`.** Nothing posts to it. Either bring a form back or delete the file and its two
    Vercel environment variables (`TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`).

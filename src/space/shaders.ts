@@ -65,30 +65,44 @@ export const SKY = `#version 300 es
 precision highp float;
 ${RAY}
 uniform sampler2D uMap;
+uniform mat3 uGal;
 uniform float uSky;
 uniform float uReady;
 out vec4 color;
 ${SPHERE_UV}
+${NOISE}
 void main() {
   vec3 d = viewRay();
-  // The real galactic plane sits about 60 degrees off the ecliptic.
-  const float c = 0.5, s = 0.866;
-  vec3 g = vec3(d.x, c * d.y - s * d.z, s * d.y + c * d.z);
-  // At this field of view the map's own stars are soft blobs, so it is read several
-  // mips down: what survives is the Milky Way's glow, and the stars on top of it are
-  // the sharp ones drawn separately.
-  float lod = max(mapLod(uMap, 2.0 * uTan / uRes.y), 3.4);
-  vec3 sky = uReady > 0.5 ? pow(textureLod(uMap, sphereUV(g), lod).rgb, vec3(2.2)) : vec3(0.0);
-  // Lift the Milky Way out of the map's black point without raising the noise.
-  sky = max(sky - 0.0004, 0.0) * 3.0;
-  color = vec4(sky * uSky + vec3(0.0009, 0.001, 0.0015) * uSky, 1.0);
+  vec3 g = uGal * d;
+  // The panorama is in galactic coordinates with longitude running left and south at
+  // the top, so its core, Rift and Magellanic Clouds land where they are in the sky.
+  vec3 glow = uReady > 0.5 ? pow(texture(uMap, sphereUV(vec3(g.x, -g.y, -g.z))).rgb, vec3(2.2)) : vec3(0.0);
+  float lum = dot(glow, vec3(0.33));
+  vec3 c = vec3(0.0);
+  if (lum > 0.0004) {
+    // The panorama had its stars removed, which also took its finest structure. Dust
+    // and star clouds put back what a long exposure would show at this scale.
+    float dust = fbm(g * 11.0 + fbm(g * 4.0) * 2.0);
+    float grain = vnoise(g * 90.0);
+    vec3 cool = vec3(0.62, 0.74, 1.0);
+    vec3 warm = vec3(1.0, 0.8, 0.6);
+    // Warm toward the old stars of the core, cool everywhere else, including the
+    // Magellanic Clouds, which are bright but young.
+    vec3 tint = mix(cool, warm, smoothstep(0.02, 0.5, sqrt(lum)) * smoothstep(0.3, 0.92, g.x));
+    // Soft-clipped: with its stars removed, the brightest cloud is a featureless smudge.
+    float soft = lum / (1.0 + lum * 6.0);
+    c = tint * soft * (0.12 + dust * dust * 2.6) * (0.75 + grain * 0.5) * 0.62;
+  }
+  // Never quite black: a real exposure of empty sky still has a floor.
+  color = vec4((c + vec3(0.0011, 0.0013, 0.002)) * uSky, 1.0);
 }`
 
 export const STAR_VERT = `#version 300 es
 precision highp float;
 layout(location = 0) in vec2 aCorner;
 layout(location = 1) in vec3 aDir;
-layout(location = 2) in vec2 aMag;
+layout(location = 2) in vec3 aColor;
+layout(location = 3) in float aEnergy;
 uniform vec2 uRes;
 uniform vec3 uF;
 uniform vec3 uR;
@@ -99,37 +113,64 @@ uniform float uWarp;
 uniform float uDpr;
 out vec2 vUv;
 out vec3 vColor;
+out float vCore;
+out float vSpike;
 void main() {
   float z = dot(aDir, uF);
   float aspect = uRes.x / uRes.y;
+  if (z <= 0.0) {
+    gl_Position = vec4(2.0, 2.0, 0.0, 1.0);
+    vUv = aCorner;
+    vColor = vec3(0.0);
+    vCore = 1.0;
+    vSpike = 0.0;
+    return;
+  }
   vec2 ndc = vec2(dot(aDir, uR) / (z * uTan * aspect), dot(aDir, uU) / (z * uTan));
-  // Streaks run out of the point the camera is flying toward.
   vec2 radial = ndc * vec2(aspect, 1.0);
   float r = length(radial);
   vec2 dir = r > 1e-4 ? radial / r : vec2(1.0, 0.0);
   vec2 perp = vec2(-dir.y, dir.x);
-  float size = (0.7 + aMag.x * aMag.x * 1.9) * uDpr / uRes.y * 2.0;
-  float stretch = uWarp * (0.02 + r * 0.22) * (0.4 + aMag.x);
+
+  // A real star is a point: what you see is the lens's blur, the same shape at every
+  // brightness and just more of it. So the core barely grows, and the quad grows to
+  // leave room for the halo and the diffraction spikes of the bright ones.
+  float e = aEnergy;
+  float corePx = (0.72 + 0.62 * pow(min(e, 8.0), 0.42)) * uDpr;
+  float spike = smoothstep(1.1, 3.4, e);
+  float quadPx = corePx * mix(2.4, 11.0, smoothstep(0.35, 2.6, e));
+  float size = quadPx / uRes.y * 2.0;
+  float stretch = uWarp * (0.008 + r * 0.17) * (0.3 + min(e, 1.0));
   vec2 offset = dir * aCorner.x * (size + stretch) + perp * aCorner.y * size;
-  gl_Position = z > 0.0
-    ? vec4(ndc + uShift + offset / vec2(aspect, 1.0), 0.0, 1.0)
-    : vec4(2.0, 2.0, 0.0, 1.0);
+  gl_Position = vec4(ndc + uShift + offset / vec2(aspect, 1.0), 0.0, 1.0);
   vUv = aCorner;
-  float t = aMag.y;
-  vColor = mix(vec3(1.0, 0.76, 0.56), vec3(0.72, 0.84, 1.0), t) * (0.14 + pow(aMag.x, 3.0) * 3.2);
-  vColor *= 1.0 / (1.0 + stretch * 6.0);
+  vCore = corePx / quadPx;
+  vSpike = spike * (1.0 - smoothstep(0.0, 0.25, uWarp));
+  vColor = aColor / (1.0 + stretch * 7.0);
 }`
 
 export const STAR_FRAG = `#version 300 es
 precision highp float;
 in vec2 vUv;
 in vec3 vColor;
+in float vCore;
+in float vSpike;
 uniform float uSky;
 out vec4 color;
 void main() {
   float d = length(vUv);
-  float a = smoothstep(1.0, 0.0, d);
-  color = vec4(vColor * a * a * uSky, 0.0);
+  if (d > 1.0) discard;
+  float fade = (1.0 - d) * (1.0 - d);
+  float core = exp(-(d * d) / (vCore * vCore * 0.5));
+  float halo = exp(-d / (vCore * 2.6)) * 0.07;
+  float a = core + halo * fade;
+  if (vSpike > 0.001) {
+    vec2 q = vec2(0.94 * vUv.x + 0.34 * vUv.y, -0.34 * vUv.x + 0.94 * vUv.y);
+    float s = exp(-abs(q.y) / (vCore * 0.16)) * exp(-abs(q.x) * 4.6) +
+      exp(-abs(q.x) / (vCore * 0.16)) * exp(-abs(q.y) * 4.6);
+    a += s * 0.2 * vSpike * fade;
+  }
+  color = vec4(vColor * a * uSky, 0.0);
 }`
 
 export const SUN = `#version 300 es
@@ -146,8 +187,12 @@ void main() {
   float disc = smoothstep(a * 1.04, a * 0.96, ang);
   float corona = pow(a / max(ang, a), 2.4);
   float wide = pow(a / max(ang, a), 1.05) * 0.006;
+  // Fine rays in the glare, as a camera's aperture draws them.
+  vec3 side = normalize(d - uSun * dot(d, uSun) + 1e-5);
+  float th = atan(dot(side, uR), dot(side, uU));
+  float rays = 0.72 + 0.28 * sin(th * 14.0 + 1.3) * sin(th * 23.0 + 0.4);
   vec3 warm = vec3(1.0, 0.93, 0.82);
-  vec3 c = warm * (disc * 90.0 + corona * 2.2) + vec3(1.0, 0.88, 0.72) * wide;
+  vec3 c = warm * (disc * 90.0 + corona * 2.2 * rays) + vec3(1.0, 0.88, 0.72) * wide * rays;
   color = vec4(c * uPower, 0.0);
 }`
 
@@ -311,6 +356,7 @@ uniform sampler2D uMap;
 uniform sampler2D uRing;
 uniform float uHasMap;
 uniform float uHasRing;
+uniform float uRingKind;
 uniform float uPixel;
 uniform float uLit;
 uniform vec3 uTint;
@@ -327,7 +373,21 @@ ${NOISE}
 const float RING_IN = 1.239;
 const float RING_OUT = 2.27;
 
+// Uranus: a handful of thin dark threads, nothing like Saturn. Positions are the real ones.
+float threads(float r, float footprint) {
+  float w = max(0.004, footprint);
+  float k = 0.004 / w;
+  float a = 0.0;
+  a += exp(-pow((r - 1.64) / w, 2.0)) * 0.5;
+  a += exp(-pow((r - 1.68) / w, 2.0)) * 0.4;
+  a += exp(-pow((r - 1.75) / w, 2.0)) * 0.55;
+  a += exp(-pow((r - 1.87) / w, 2.0)) * 0.5;
+  a += exp(-pow((r - 2.0) / (w * 1.6), 2.0)) * 1.0;
+  return min(1.0, a * k) * 0.52;
+}
+
 float ringAlpha(float r, float footprint) {
+  if (uRingKind > 1.5) return threads(r, footprint);
   if (r < RING_IN - footprint || r > RING_OUT + footprint) return 0.0;
   float u = (r - RING_IN) / (RING_OUT - RING_IN);
   float lod = max(0.0, log2(max(float(textureSize(uRing, 0).x) * footprint / (RING_OUT - RING_IN), 1e-4)));
@@ -370,16 +430,17 @@ void main() {
     float footprint = uPixel * tPlanet / max(dot(normalize(p), -rd), 0.12);
     float lod = mapLod(uMap, footprint);
     vec3 albedo = uHasMap > 0.5 ? pow(textureLod(uMap, uv, lod).rgb, vec3(2.2)) : uTint;
-    if (uHasMap < 0.5 && uDetail > 0.0) {
-      // No usable map of Pluto exists at this resolution under a free licence, so
-      // its look is drawn: icy plains, and the dark red belt at the equator.
-      float blotch = fbm(nB * 2.6 + 3.1);
-      float grain = fbm(nB * 11.0);
-      float belt = smoothstep(0.34, 0.08, abs(nB.z + (blotch - 0.5) * 0.5));
-      float plain = smoothstep(0.58, 0.42, length(nB - normalize(vec3(0.6, 0.55, 0.2))) * (0.7 + blotch * 0.5));
-      albedo = mix(vec3(0.46, 0.38, 0.3) * (0.5 + blotch * 0.8), vec3(0.1, 0.05, 0.03), belt * 0.85);
-      albedo = mix(albedo, vec3(0.6, 0.56, 0.5), plain * 0.9);
-      albedo *= 0.62 + grain * 0.76;
+    if (uBanded > 0.2 && uBanded < 0.6 && uHasMap > 0.5) {
+      // The ice giants' maps are far bluer than the planets look. Left alone, Neptune
+      // is the one neon thing on a page that has none.
+      albedo = mix(vec3(dot(albedo, vec3(0.33))), albedo, 0.66);
+    }
+    if (uBanded > 0.6 && uHasMap > 0.5) {
+      // These maps are bright, flat composites. A little contrast and colour gives back
+      // the depth in the bands that a photograph of the real thing has.
+      float l = dot(albedo, vec3(0.33));
+      albedo = mix(vec3(l), albedo, 1.3);
+      albedo = pow(max(albedo, vec3(0.0)), vec3(1.16)) * 1.14;
     }
     vec3 shadeN = nB;
 
@@ -462,6 +523,14 @@ void main() {
         float hs = bs * bs - dot(pr, pr) + 1.0;
         float shadow = bs < 0.0 ? 1.0 - smoothstep(-0.03, 0.03, hs) : 1.0;
         vec3 ringColor = vec3(0.62, 0.55, 0.45) * (0.5 + alpha * 0.55);
+        if (uRingKind > 1.5) {
+          ringColor = vec3(0.62, 0.7, 0.74) * 0.62;
+        } else {
+          // Thousands of ringlets, warmer inside and cooler out. The map only has opacity.
+          float ringlets = vnoise(vec3(r * 170.0, 0.0, 0.0)) * 0.6 + vnoise(vec3(r * 52.0, 3.0, 0.0)) * 0.4;
+          vec3 tone = mix(vec3(0.74, 0.62, 0.46), vec3(0.56, 0.56, 0.54), smoothstep(1.5, 2.2, r));
+          ringColor = tone * (0.42 + alpha * 0.6) * (0.72 + ringlets * 0.56);
+        }
         ring = vec4(ringColor * shadow * alpha, alpha * 0.96);
       }
     }
@@ -474,6 +543,55 @@ void main() {
   if (ringInFront) { c = c * (1.0 - ring.a) + ring.rgb; a = a + (1.0 - a) * ring.a; }
 
   color = vec4(c * uLit, a);
+}`
+
+/** Rocks, lumpy and lit from the Sun's side, rushing past as the belt is crossed. */
+export const ROCK_VERT = `#version 300 es
+precision highp float;
+layout(location = 0) in vec4 aSeed;
+uniform vec2 uRes;
+uniform vec2 uShift;
+uniform float uTan;
+uniform float uTravel;
+uniform float uLevel;
+uniform float uDpr;
+out float vSeed;
+out float vLight;
+void main() {
+  float z = fract(aSeed.z - uTravel) * 46.0 + 0.5;
+  // Clear of the middle of the frame: the camera threads the gap, it does not ram it.
+  vec2 side = aSeed.xy - 0.5;
+  side += sign(side) * 0.06;
+  vec2 p = side * vec2(70.0, 46.0);
+  float aspect = uRes.x / uRes.y;
+  gl_Position = vec4(p.x / (z * uTan * aspect) + uShift.x, p.y / (z * uTan) + uShift.y, 0.0, 1.0);
+  float radius = 0.03 + aSeed.w * aSeed.w * aSeed.w * 0.5;
+  gl_PointSize = clamp(radius / (z * uTan) * uRes.y, 1.2 * uDpr, 150.0 * uDpr);
+  float fadeIn = smoothstep(46.5, 26.0, z);
+  float fadeNear = smoothstep(0.5, 2.4, z);
+  vLight = fadeIn * fadeNear * uLevel;
+  vSeed = aSeed.w * 37.0 + aSeed.x * 11.0;
+}`
+
+export const ROCK_FRAG = `#version 300 es
+precision highp float;
+in float vSeed;
+in float vLight;
+uniform vec3 uSunView;
+out vec4 color;
+${NOISE}
+void main() {
+  vec2 p = gl_PointCoord * 2.0 - 1.0;
+  p.y = -p.y;
+  float a = atan(p.y, p.x);
+  float edge = 0.62 + 0.3 * vnoise(vec3(cos(a) * 1.6 + vSeed, sin(a) * 1.6, vSeed));
+  float r = length(p) / edge;
+  if (r > 1.0) discard;
+  vec3 n = normalize(vec3(p / edge, sqrt(max(1.0 - r * r, 0.0)) + 0.001));
+  float bump = vnoise(vec3(p * 5.0 + vSeed, vSeed));
+  float lit = max(dot(normalize(n + (bump - 0.5) * 0.5), uSunView), 0.0);
+  vec3 rock = mix(vec3(0.32, 0.27, 0.22), vec3(0.2, 0.19, 0.18), fract(vSeed));
+  color = vec4(rock * (lit * 4.2 + 0.03) * vLight, smoothstep(1.0, 0.86, r) * vLight);
 }`
 
 export const GALAXY_VERT = `#version 300 es
