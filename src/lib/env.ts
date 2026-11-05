@@ -10,8 +10,3 @@ export function prefersReducedMotion(): boolean {
   return window.matchMedia('(prefers-reduced-motion: reduce)').matches
 }
 
-/** Small screen or a finger: no pinned stacking, no parallax on the panels. */
-export function isCompact(): boolean {
-  if (typeof window === 'undefined') return false
-  return window.matchMedia('(max-width: 820px), (pointer: coarse)').matches
-}

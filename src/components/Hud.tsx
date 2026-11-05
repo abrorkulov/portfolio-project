@@ -1,86 +1,98 @@
-import { useEffect, useRef, useState } from 'react'
-import Scramble from './Scramble'
-import { meta, nav } from '../data/site'
+import { useEffect, useRef } from 'react'
+import { onTelemetry } from '../lib/telemetry'
+import { hud, nav, route } from '../data/site'
 
-const TOP_ADDRESS = 0x7fffffff
+const LIGHT_KM_S = 299792
+
+function formatKm(km: number) {
+  if (km >= 1e9) return `${(km / 1e9).toFixed(2)} billion km`
+  if (km >= 1e6) return `${(km / 1e6).toFixed(1)} million km`
+  return `${Math.round(km).toLocaleString('en-US')} km`
+}
+
+function formatLight(km: number) {
+  const s = km / LIGHT_KM_S
+  if (s < 1) return `${Math.round(s * 1000)} ms`
+  if (s < 60) return `${s.toFixed(1)} s`
+  if (s < 3600) return `${Math.floor(s / 60)} min ${Math.round(s % 60)} s`
+  return `${Math.floor(s / 3600)} h ${Math.round((s % 3600) / 60)} min`
+}
+
+function formatYears(ly: number) {
+  if (ly >= 1e6) return `${(ly / 1e6).toFixed(1)} million light-years`
+  return `${Math.round(ly).toLocaleString('en-US')} light-years`
+}
 
 /**
- * The name, the sections, and an address that counts down as you scroll: the
- * page is laid out as a descent, and this is the only thing that says so at
- * every moment.
- *
- * The colour is set from whichever section is under the bar. `mix-blend-mode:
- * difference` would have been one line, but difference against the ember
- * section comes out cyan, and the site only has one accent.
+ * Real distances, live, and a route down the side of the screen. These are the
+ * only always-visible instruments, and they are deliberately small: the thing to
+ * look at is the planet.
  */
 export default function Hud() {
-  const [theme, setTheme] = useState('dark')
-  const [active, setActive] = useState('')
-  const address = useRef<HTMLSpanElement>(null)
+  const distance = useRef<HTMLSpanElement>(null)
+  const light = useRef<HTMLSpanElement>(null)
+  const place = useRef<HTMLSpanElement>(null)
+  const rail = useRef<HTMLOListElement>(null)
+  const lastStop = useRef(-1)
 
-  useEffect(() => {
-    const sections = [...document.querySelectorAll<HTMLElement>('[data-theme]')]
-    // A thin band across the top of the screen: whatever crosses it is what the
-    // bar is sitting on.
-    const top = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (!entry.isIntersecting) continue
-          const el = entry.target as HTMLElement
-          setTheme(el.dataset.theme ?? 'dark')
-          setActive(el.id)
+  useEffect(
+    () =>
+      onTelemetry(({ at, km, lightYears }) => {
+        const stop = Math.round(at)
+        if (stop !== lastStop.current) {
+          lastStop.current = stop
+          if (place.current) place.current.textContent = route[Math.min(stop, route.length - 1)].name
+          const items = rail.current?.children
+          if (items) {
+            for (let i = 0; i < items.length; i++) items[i].classList.toggle('is-on', i === stop)
+          }
         }
-      },
-      { rootMargin: '-4% 0px -95% 0px' },
-    )
-    sections.forEach((s) => top.observe(s))
-    return () => top.disconnect()
-  }, [])
-
-  useEffect(() => {
-    let raf = 0
-    const paint = () => {
-      raf = 0
-      const root = document.documentElement
-      const max = root.scrollHeight - window.innerHeight
-      const progress = max > 0 ? Math.min(1, window.scrollY / max) : 0
-      const value = Math.round(TOP_ADDRESS * (1 - progress))
-      if (address.current) {
-        address.current.textContent = `0x${value.toString(16).toUpperCase().padStart(8, '0')}`
-      }
-    }
-    const onScroll = () => {
-      if (!raf) raf = requestAnimationFrame(paint)
-    }
-    paint()
-    window.addEventListener('scroll', onScroll, { passive: true })
-    window.addEventListener('resize', onScroll, { passive: true })
-    return () => {
-      cancelAnimationFrame(raf)
-      window.removeEventListener('scroll', onScroll)
-      window.removeEventListener('resize', onScroll)
-    }
-  }, [])
+        if (!distance.current || !light.current) return
+        if (!Number.isNaN(lightYears)) {
+          distance.current.textContent = formatYears(lightYears)
+          light.current.textContent = ''
+        } else if (!Number.isNaN(km)) {
+          distance.current.textContent = formatKm(km)
+          light.current.textContent = `${hud.light} ${formatLight(km)}`
+        }
+      }),
+    [],
+  )
 
   return (
-    <header className="hud" data-hud={theme}>
-        <a className="hud-name" href="#top" aria-label={`${meta.name}, back to top`}>
-          <Scramble text="J.ABRORKULOV" />
+    <>
+      <header className="hud">
+        <a className="hud-name" href="#top">
+          abrorkulov.uz
         </a>
-        <span ref={address} className="hud-address" aria-hidden="true">
-          0x7FFFFFFF
-        </span>
         <nav className="hud-nav" aria-label="Sections">
           {nav.map((item) => (
-            <a
-              key={item.id}
-              href={`#${item.id}`}
-              aria-current={active === item.id ? 'true' : undefined}
-            >
-              <Scramble text={item.label} />
+            <a key={item.href} href={item.href}>
+              {item.label}
             </a>
           ))}
         </nav>
-    </header>
+      </header>
+
+      <ol ref={rail} className="rail" aria-label="Route">
+        {route.map((stop, i) => (
+          <li key={stop.id} className={i === 0 ? 'is-on' : undefined}>
+            <a href={`#${stop.id}`} aria-label={stop.name}>
+              <span>{stop.name}</span>
+              <i />
+            </a>
+          </li>
+        ))}
+      </ol>
+
+      <div className="readout" aria-hidden="true">
+        <span ref={place} className="readout-place">
+          {route[0].name}
+        </span>
+        <span className="readout-from">{hud.fromHome}</span>
+        <span ref={distance}>0 km</span>
+        <span ref={light} className="readout-light" />
+      </div>
+    </>
   )
 }

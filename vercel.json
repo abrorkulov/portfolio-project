@@ -50,7 +50,7 @@
       ]
     },
     {
-      "source": "/(fonts|work)/(.*)",
+      "source": "/(fonts|work|space)/(.*)",
       "headers": [
         {
           "key": "Cache-Control",

@@ -1,5 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
-  <rect width="64" height="64" fill="#050505"/>
-  <path d="M34 12h11v29c0 8-5 12-13 12s-13-4-13-12v-4h11v3c0 2 1 3 2 3s2-1 2-3z" fill="#ece7dc"/>
-  <rect x="49" y="44" width="9" height="9" fill="#ff4a1c"/>
+  <!-- A planet at the terminator: the one picture the whole site is made of. -->
+  <rect width="64" height="64" fill="#05060a"/>
+  <path d="M38 11a21.5 21.5 0 0 1 0 42 26 26 0 0 0 0-42z" fill="#ebe8e1"/>
+  <circle cx="32" cy="32" r="21.5" fill="none" stroke="#ebe8e1" stroke-opacity="0.16"/>
 </svg>

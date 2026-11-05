@@ -23,8 +23,8 @@
   ],
   "start_url": "/",
   "scope": "/",
-  "background_color": "#050505",
-  "theme_color": "#050505",
+  "background_color": "#05060a",
+  "theme_color": "#05060a",
   "display": "standalone",
-  "description": "Full-stack engineer from Tashkent. From the pixel to the register."
+  "description": "A flight from Tashkent to the edge of the galaxy, rendered live in your browser."
 }

@@ -1,5 +1,5 @@
 // Bump this on any change to the caching strategy below.
-const CACHE_NAME = 'signal-portfolio-v5'
+const CACHE_NAME = 'signal-portfolio-v6'
 
 // The shell is cached as an offline fallback only — never as the primary
 // source for a navigation. See the fetch handler.

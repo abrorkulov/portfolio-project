@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import Scramble from './Scramble'
 import { BASE, LOCK_OFFSET, PROGRAM, boot, disassemble, hex, step } from '../lib/x86'
 import type { Cpu } from '../lib/x86'
 import { prefersReducedMotion } from '../lib/env'
+import { firePulse } from '../lib/telemetry'
 import { lab } from '../data/site'
 
 type Props = {
@@ -47,6 +47,7 @@ export default function Lab({ onCracked }: Props) {
     if (end.eax === 1) {
       say('access granted')
       setMethod(usedPatch ? 'patch' : 'key')
+      firePulse()
       onCracked()
     } else {
       say('access denied')
@@ -165,225 +166,215 @@ export default function Lab({ onCracked }: Props) {
   const granted = method !== null
 
   return (
-    <section id="lab" className="lab" data-theme="dark">
-      <header className="lab-head">
-        <p className="kicker">
-          <Scramble text={lab.kicker} />
-        </p>
-        <h2 className="lab-title" data-reveal>
-          {lab.title.map((line) => (
-            <span key={line} className="ln">
-              <span>{line}</span>
-            </span>
-          ))}
-        </h2>
-        <p className="lab-intro" data-reveal>
-          {lab.intro}
-        </p>
-      </header>
+    <section id="lab" className="stop stop-flow">
+      <div className="lab-inner">
+        <header className="panel lab-head">
+          <p className="label">{lab.label}</p>
+          <h2 className="title">{lab.title}</h2>
+          <p className="body">{lab.intro}</p>
+        </header>
 
-      {/* The reveal observer writes a class straight onto its node, and React
-          owns className: a state-driven class on the same element wipes the
-          reveal, and the debugger vanished at the exact moment it was beaten. */}
-      <div data-reveal>
-        <div className={granted ? 'debugger is-granted' : 'debugger'}>
-          <div className="dbg-bar">
-            <span className="dbg-file">{lab.file}</span>
-            <label className="dbg-key">
-              <span>{lab.keyLabel}</span>
-              <span className="dbg-key-field">
-                0x
-                <input
-                  value={key}
-                  inputMode="text"
-                  autoComplete="off"
-                  autoCapitalize="characters"
-                  spellCheck={false}
-                  maxLength={8}
-                  aria-label="Key, in hexadecimal"
-                  onChange={(event) => {
-                    const value = event.target.value.replace(/[^0-9a-f]/gi, '').toUpperCase()
-                    setKey(value)
-                    restart(value)
-                  }}
-                />
-              </span>
-            </label>
-            <div className="dbg-actions">
-              <button type="button" onClick={onStep} disabled={running}>
-                Step
-              </button>
-              <button type="button" className="is-primary" onClick={onRun} disabled={running}>
-                Run
-              </button>
-              <button type="button" onClick={fullReset}>
-                Reset
-              </button>
-            </div>
-          </div>
-
-          <div className="dbg-grid">
-            <div className="dbg-pane dbg-asm">
-              <p className="dbg-label">Disassembly</p>
-              <ol>
-                {ops.map((op) => {
-                  const current = op.addr === cpu.eip && !cpu.halted
-                  const changed = op.bytes.some((b, i) => b !== PROGRAM[op.addr - BASE + i])
-                  return (
-                    <li
-                      key={op.addr}
-                      className={[current ? 'is-eip' : '', changed ? 'is-patched' : '']
-                        .filter(Boolean)
-                        .join(' ')}
-                    >
-                      <span className="asm-addr">{hex(op.addr, 6)}</span>
-                      <span className="asm-bytes">{op.bytes.map((b) => hex(b, 2)).join(' ')}</span>
-                      <span className="asm-text">{op.text}</span>
-                      <span className="asm-note">{op.comment ? `; ${op.comment}` : ''}</span>
-                    </li>
-                  )
-                })}
-              </ol>
+        <div className="lab-debug">
+          <div className={granted ? 'debugger is-granted' : 'debugger'}>
+            <div className="dbg-bar">
+              <span className="dbg-file">{lab.file}</span>
+              <label className="dbg-key">
+                <span>{lab.keyLabel}</span>
+                <span className="dbg-key-field">
+                  0x
+                  <input
+                    value={key}
+                    inputMode="text"
+                    autoComplete="off"
+                    autoCapitalize="characters"
+                    spellCheck={false}
+                    maxLength={8}
+                    aria-label="Key, in hexadecimal"
+                    onChange={(event) => {
+                      const value = event.target.value.replace(/[^0-9a-f]/gi, '').toUpperCase()
+                      setKey(value)
+                      restart(value)
+                    }}
+                  />
+                </span>
+              </label>
+              <div className="dbg-actions">
+                <button type="button" onClick={onStep} disabled={running}>
+                  Step
+                </button>
+                <button type="button" className="is-primary" onClick={onRun} disabled={running}>
+                  Run
+                </button>
+                <button type="button" onClick={fullReset}>
+                  Reset
+                </button>
+              </div>
             </div>
 
-            <div className="dbg-pane dbg-regs">
-              <p className="dbg-label">Registers</p>
-              <dl>
-                <div>
-                  <dt>EAX</dt>
-                  <dd>{hex(cpu.eax)}</dd>
-                </div>
-                <div>
-                  <dt>EIP</dt>
-                  <dd>{hex(cpu.eip)}</dd>
-                </div>
-                <div>
-                  <dt>ZF</dt>
-                  <dd>{cpu.zf ? '1' : '0'}</dd>
-                </div>
-                <div>
-                  <dt>[EBP+8]</dt>
-                  <dd>{hex(cpu.key)}</dd>
-                </div>
-              </dl>
-            </div>
+            <div className="dbg-grid">
+              <div className="dbg-pane dbg-asm">
+                <p className="dbg-label">Disassembly</p>
+                <ol>
+                  {ops.map((op) => {
+                    const current = op.addr === cpu.eip && !cpu.halted
+                    const changed = op.bytes.some((b, i) => b !== PROGRAM[op.addr - BASE + i])
+                    return (
+                      <li
+                        key={op.addr}
+                        className={[current ? 'is-eip' : '', changed ? 'is-patched' : '']
+                          .filter(Boolean)
+                          .join(' ')}
+                      >
+                        <span className="asm-addr">{hex(op.addr, 6)}</span>
+                        <span className="asm-bytes">
+                          {op.bytes.map((b) => hex(b, 2)).join(' ')}
+                        </span>
+                        <span className="asm-text">{op.text}</span>
+                        <span className="asm-note">{op.comment ? `; ${op.comment}` : ''}</span>
+                      </li>
+                    )
+                  })}
+                </ol>
+              </div>
 
-            <div className="dbg-pane dbg-hex">
-              <p className="dbg-label">Hex. Click a byte to patch it</p>
-              <div className="hex-rows">
-                {rows.map((row, r) => (
-                  <div key={r} className="hex-row">
-                    <span className="asm-addr">{hex(BASE + r * BYTES_PER_ROW, 6)}</span>
-                    <span className="hex-bytes">
-                      {row.map((byte, c) => {
-                        const index = r * BYTES_PER_ROW + c
-                        if (editing === index) {
-                          return (
-                            <input
-                              key={index}
-                              className="hex-input"
-                              value={draft}
-                              autoFocus
-                              maxLength={2}
-                              spellCheck={false}
-                              aria-label={`Byte at offset ${index}`}
-                              onFocus={(event) => event.target.select()}
-                              onChange={(event) => {
-                                const value = event.target.value
-                                  .replace(/[^0-9a-f]/gi, '')
-                                  .toUpperCase()
-                                setDraft(value)
-                                if (value.length === 2) commitByte(value)
-                              }}
-                              onBlur={() => commitByte(draft)}
-                              onKeyDown={(event) => {
-                                if (event.key === 'Enter') commitByte(draft)
-                                if (event.key === 'Escape') {
-                                  setEditing(null)
-                                  setDraft('')
-                                }
-                              }}
-                            />
-                          )
-                        }
-                        const classes = ['hex-byte']
-                        if (byte !== PROGRAM[index]) classes.push('is-patched')
-                        if (lockPulse && index === LOCK_OFFSET) classes.push('is-pulse')
-                        return (
-                          <button
-                            key={index}
-                            type="button"
-                            className={classes.join(' ')}
-                            aria-label={`Byte ${hex(byte, 2)} at 0x${hex(BASE + index, 6)}, edit`}
-                            onClick={() => beginEdit(index)}
-                          >
-                            {hex(byte, 2)}
-                          </button>
-                        )
-                      })}
-                    </span>
-                    <span className="hex-ascii" aria-hidden="true">
-                      {row.map(printable).join('')}
-                    </span>
+              <div className="dbg-pane dbg-regs">
+                <p className="dbg-label">Registers</p>
+                <dl>
+                  <div>
+                    <dt>EAX</dt>
+                    <dd>{hex(cpu.eax)}</dd>
                   </div>
-                ))}
+                  <div>
+                    <dt>EIP</dt>
+                    <dd>{hex(cpu.eip)}</dd>
+                  </div>
+                  <div>
+                    <dt>ZF</dt>
+                    <dd>{cpu.zf ? '1' : '0'}</dd>
+                  </div>
+                  <div>
+                    <dt>[EBP+8]</dt>
+                    <dd>{hex(cpu.key)}</dd>
+                  </div>
+                </dl>
+              </div>
+
+              <div className="dbg-pane dbg-hex">
+                <p className="dbg-label">Hex. Click a byte to patch it</p>
+                <div className="hex-rows">
+                  {rows.map((row, r) => (
+                    <div key={r} className="hex-row">
+                      <span className="asm-addr">{hex(BASE + r * BYTES_PER_ROW, 6)}</span>
+                      <span className="hex-bytes">
+                        {row.map((byte, c) => {
+                          const index = r * BYTES_PER_ROW + c
+                          if (editing === index) {
+                            return (
+                              <input
+                                key={index}
+                                className="hex-input"
+                                value={draft}
+                                autoFocus
+                                maxLength={2}
+                                spellCheck={false}
+                                aria-label={`Byte at offset ${index}`}
+                                onFocus={(event) => event.target.select()}
+                                onChange={(event) => {
+                                  const value = event.target.value
+                                    .replace(/[^0-9a-f]/gi, '')
+                                    .toUpperCase()
+                                  setDraft(value)
+                                  if (value.length === 2) commitByte(value)
+                                }}
+                                onBlur={() => commitByte(draft)}
+                                onKeyDown={(event) => {
+                                  if (event.key === 'Enter') commitByte(draft)
+                                  if (event.key === 'Escape') {
+                                    setEditing(null)
+                                    setDraft('')
+                                  }
+                                }}
+                              />
+                            )
+                          }
+                          const classes = ['hex-byte']
+                          if (byte !== PROGRAM[index]) classes.push('is-patched')
+                          if (lockPulse && index === LOCK_OFFSET) classes.push('is-pulse')
+                          return (
+                            <button
+                              key={index}
+                              type="button"
+                              className={classes.join(' ')}
+                              aria-label={`Byte ${hex(byte, 2)} at 0x${hex(BASE + index, 6)}, edit`}
+                              onClick={() => beginEdit(index)}
+                            >
+                              {hex(byte, 2)}
+                            </button>
+                          )
+                        })}
+                      </span>
+                      <span className="hex-ascii" aria-hidden="true">
+                        {row.map(printable).join('')}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="dbg-pane dbg-log" aria-live="polite">
+                <p className="dbg-label">Output</p>
+                <ol>
+                  {log.map((line, i) => (
+                    <li key={`${i}-${line}`}>{line}</li>
+                  ))}
+                </ol>
+                <div className="dbg-help">
+                  {hint > 0 && !granted ? (
+                    <p>{lab.hints[Math.min(hint, lab.hints.length) - 1]}</p>
+                  ) : null}
+                  {hint < lab.hints.length ? (
+                    <button type="button" onClick={() => setHint(hint + 1)}>
+                      {lab.hintButton}
+                    </button>
+                  ) : !granted ? (
+                    <button type="button" onClick={patchForMe} disabled={running}>
+                      {lab.autoButton}
+                    </button>
+                  ) : null}
+                </div>
               </div>
             </div>
 
-            <div className="dbg-pane dbg-log" aria-live="polite">
-              <p className="dbg-label">Output</p>
-              <ol>
-                {log.map((line, i) => (
-                  <li key={`${i}-${line}`}>{line}</li>
-                ))}
-              </ol>
-              <div className="dbg-help">
-                {hint > 0 && !granted ? (
-                  <p>{lab.hints[Math.min(hint, lab.hints.length) - 1]}</p>
-                ) : null}
-                {hint < lab.hints.length ? (
-                  <button type="button" onClick={() => setHint(hint + 1)}>
-                    {lab.hintButton}
-                  </button>
-                ) : !granted ? (
-                  <button type="button" onClick={patchForMe} disabled={running}>
-                    {lab.autoButton}
-                  </button>
-                ) : null}
-              </div>
+            <div className="dbg-granted" aria-hidden={!granted}>
+              <p className="dbg-granted-title">{lab.granted}</p>
+              <p className="dbg-granted-note">
+                {method === 'key' ? lab.byKey : lab.byPatch} {lab.grantedNote}
+              </p>
             </div>
-          </div>
-
-          <div className="dbg-granted" aria-hidden={!granted}>
-            <p className="dbg-granted-title">{lab.granted}</p>
-            <p className="dbg-granted-note">
-              {method === 'key' ? lab.byKey : lab.byPatch} {lab.grantedNote}
-            </p>
           </div>
         </div>
-      </div>
 
-      <div className="notes">
-        <div className="notes-left" data-reveal>
-          <p className="kicker">{lab.writeup.kicker}</p>
-          <h3 className="notes-title">{lab.writeup.title}</h3>
+        <div className="notes panel">
+          <h3 className="title title-project">{lab.writeup.title}</h3>
           <blockquote>
             <p>“{lab.writeup.quote}”</p>
             <cite>{lab.writeup.quoteSource}</cite>
           </blockquote>
-          <p className="notes-body">{lab.writeup.body}</p>
-          <a className="notes-link" href={lab.writeup.repo} target="_blank" rel="noreferrer">
-            {lab.writeup.repoLabel}
-          </a>
+          <p className="body">{lab.writeup.body}</p>
+          <dl className="layers">
+            {lab.writeup.modules.map((module) => (
+              <div key={module.file}>
+                <dt>{module.file}</dt>
+                <dd>{module.does}</dd>
+              </div>
+            ))}
+          </dl>
+          <p className="links">
+            <a href={lab.writeup.repo} target="_blank" rel="noreferrer">
+              {lab.writeup.repoLabel}
+            </a>
+          </p>
         </div>
-        <ul className="notes-modules" data-reveal>
-          {lab.writeup.modules.map((module) => (
-            <li key={module.file}>
-              <span>{module.file}</span>
-              <span>{module.does}</span>
-            </li>
-          ))}
-        </ul>
       </div>
     </section>
   )
