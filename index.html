@@ -3,71 +3,48 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Jahongir Abrorkulov - Hello :)</title>
+    <title>Jahongir Abrorkulov — Full-stack engineer</title>
 
     <meta
       name="description"
-      content="Jahongir Abrorkulov — 15, based in Tashkent. Frontend, backend and AI engineering. A small card of a site: where I learn, what I work with, and how to reach me."
+      content="Jahongir Abrorkulov, 16, full-stack engineer from Tashkent. Products on the web and mobile, and a habit of going below the API: C++, memory, reverse engineering. There is a crackme on the page."
     />
     <meta name="author" content="Jahongir Abrorkulov" />
-    <meta name="theme-color" content="#000000" />
+    <meta name="theme-color" content="#050505" />
     <meta name="color-scheme" content="dark" />
 
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://abrorkulov.uz/" />
-    <meta property="og:title" content="Jahongir Abrorkulov — Hello :)" />
-    <meta
-      property="og:description"
-      content="15, based in Tashkent. Frontend, backend and AI engineering."
-    />
+    <meta property="og:title" content="Jahongir Abrorkulov — Full-stack engineer" />
+    <meta property="og:description" content="From the pixel to the register. There is a crackme on the page." />
     <!-- A real 1200×630 PNG: Telegram, LinkedIn and Twitter do not render an
          SVG preview, so a link to the site used to arrive with no card. -->
     <meta property="og:image" content="https://abrorkulov.uz/og.png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
-    <meta property="og:image:alt" content="Hello :) — Jahongir Abrorkulov" />
+    <meta property="og:image:alt" content="Jahongir Abrorkulov, set very large, dissolving into hexadecimal" />
     <meta property="og:locale" content="en_US" />
 
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:image" content="https://abrorkulov.uz/og.png" />
-    <meta name="twitter:title" content="Jahongir Abrorkulov — Hello :)" />
-    <meta
-      name="twitter:description"
-      content="15, based in Tashkent. Frontend, backend and AI engineering."
-    />
+    <meta name="twitter:title" content="Jahongir Abrorkulov — Full-stack engineer" />
+    <meta name="twitter:description" content="From the pixel to the register. There is a crackme on the page." />
 
     <link rel="manifest" href="/manifest.json" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <!-- Loaded without blocking the first paint: `media="print"` makes the
-         browser fetch it at a low priority and not hold rendering for it, and
-         the onload flip promotes it the moment it lands. As a plain
-         stylesheet link this was the largest delay before anything appeared.
+    <!-- Self-hosted and preloaded. The hero rasterises its letters from the real
+         font, so the display face arriving late is not a flash of the wrong type
+         but a shader drawing the wrong name. -->
+    <link rel="preload" href="/fonts/archivo.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/martian-mono.woff2" as="font" type="font/woff2" crossorigin />
 
-         Two families, and the pairing is the whole type system: Dancing
-         Script writes the word "Hello", Sora sets everything else. Only the
-         weights the stylesheet actually sets are requested — every extra
-         weight is another file on the critical path of the first paint. -->
-    <link
-      rel="preload"
-      as="style"
-      href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Sora:wght@200;300;400&display=swap"
-    />
-    <link
-      rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Sora:wght@200;300;400&display=swap"
-      media="print"
-      onload="this.media='all'; this.onload=null;"
-    />
-    <noscript>
-      <link
-        rel="stylesheet"
-        href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Sora:wght@200;300;400&display=swap"
-      />
-    </noscript>
+    <!-- Before the first paint, so the reveals' starting positions apply from
+         the start, and a visitor with scripts off still sees every word. -->
+    <script>
+      document.documentElement.classList.add('js')
+    </script>
 
     <script type="application/ld+json">
       {
@@ -76,7 +53,7 @@
         "name": "Jahongir Abrorkulov",
         "url": "https://abrorkulov.uz/",
         "image": "https://abrorkulov.uz/og.png",
-        "jobTitle": "Frontend & AI Developer",
+        "jobTitle": "Full-stack engineer",
         "sameAs": [
           "https://github.com/abrorkulov",
           "https://linkedin.com/in/jahongir-abrorkulov",
@@ -87,7 +64,17 @@
           "addressLocality": "Tashkent",
           "addressCountry": "Uzbekistan"
         },
-        "knowsAbout": ["React", "TypeScript", "C#", ".NET", "C++", "AI Engineering"],
+        "knowsAbout": [
+          "React",
+          "TypeScript",
+          "React Native",
+          "Node.js",
+          "PostgreSQL",
+          "C++",
+          "C#",
+          "Reverse engineering",
+          "AI Engineering"
+        ],
         "alumniOf": [
           { "@type": "EducationalOrganization", "name": "Cambridge Learning Center" },
           { "@type": "EducationalOrganization", "name": "Najot Ta'lim" },

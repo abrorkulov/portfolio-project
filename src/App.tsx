@@ -1,137 +1,56 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import Snow from './components/Snow'
-import SceneStage from './components/SceneStage'
-import StepRail from './components/StepRail'
-import Corners from './components/Corners'
-import HomeScene from './scenes/HomeScene'
-import AboutScene from './scenes/AboutScene'
-import StudyScene from './scenes/StudyScene'
-import StackScene from './scenes/StackScene'
-import ContactScene from './scenes/ContactScene'
-import { usePageGestures } from './lib/usePageGestures'
-import { dissolve } from './lib/snowfx'
-import { meta, pages } from './data/site'
+import { useEffect, useLayoutEffect, useState } from 'react'
+import About from './components/About'
+import Contact from './components/Contact'
+import Descent from './components/Descent'
+import Hero from './components/Hero'
+import Hud from './components/Hud'
+import Lab from './components/Lab'
+import Work from './components/Work'
 
-const LAST = pages.length - 1
-
-function pageFromHash(): number {
-  if (typeof window === 'undefined') return 0
-  const found = pages.findIndex((entry) => entry.id === window.location.hash.slice(1))
-  return found === -1 ? 0 : found
-}
-
+/**
+ * The page is one argument read top to bottom: what I ship, then what runs it,
+ * then the machine itself.
+ *
+ * Reveals are a class and a CSS transition, never a tween. A tween interrupted
+ * mid-flight strands the element at whatever opacity it reached; a class either
+ * is on the element or is not, and CSS finishes the job regardless.
+ */
 export default function App() {
-  const [page, setPage] = useState(pageFromHash)
+  const [cracked, setCracked] = useState(false)
 
-  // Each page performs its typing once per visit. Coming back to the home
-  // screen and watching the word write itself again is charm the second time
-  // and a wait every time after that.
-  const seen = useRef(new Set<number>())
-
-  // Leaving a page takes its headline apart: the letters come off the
-  // screen as snow and fly past the camera with the page change. It is done
-  // here, at the moment of the request, because by the time the page
-  // unmounts it has already been faded and thrown off the top.
-  const current = useRef(page)
-  current.current = page
-  const leaving = useCallback((target: number) => {
-    if (target === current.current) return
-    document
-      .querySelectorAll<HTMLElement>('.home-word, .home-smile, .scene-title, .about-line')
-      .forEach((el) => dissolve(el))
-  }, [])
-
-  const go = useCallback(
-    (next: number) => {
-      leaving(Math.max(0, Math.min(LAST, next)))
-      setPage((current) => {
-        const target = Math.max(0, Math.min(LAST, next))
-        seen.current.add(current)
-        return target
-      })
-    },
-    [leaving],
-  )
-
-  // Relative to whatever page is current at the moment the gesture lands, so
-  // the gesture listeners never have to be re-bound when the page changes.
-  const step = useCallback(
-    (delta: number) => {
-      leaving(Math.max(0, Math.min(LAST, current.current + delta)))
-      setPage((current) => {
-        const target = Math.max(0, Math.min(LAST, current + delta))
-        seen.current.add(current)
-        return target
-      })
-    },
-    [leaving],
-  )
-
-  usePageGestures(step)
-
-  // The hash is a label on the current page, written with `replaceState` so
-  // the back button leaves the site instead of walking the visitor backwards
-  // through five screens they already saw.
-  useEffect(() => {
-    window.history.replaceState(null, '', `#${pages[page].id}`)
-    document.title = page === 0 ? meta.title : meta.pageTitle(pages[page].label)
-  }, [page])
-
-  // Someone editing the hash by hand, or following a link into the site while
-  // it is already open, should land on that page.
-  useEffect(() => {
-    const onHash = () => setPage(pageFromHash())
-    window.addEventListener('hashchange', onHash)
-    return () => window.removeEventListener('hashchange', onHash)
+  // The browser looks for the anchor while #root is still empty, finds nothing
+  // and stays at the top, so a shared link to #contact has to be honoured here.
+  useLayoutEffect(() => {
+    const target = window.location.hash.slice(1)
+    if (target) document.getElementById(target)?.scrollIntoView({ behavior: 'auto' })
   }, [])
 
   useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      if (event.metaKey || event.ctrlKey || event.altKey) return
-      if (event.key === 'ArrowDown' || event.key === 'PageDown') go(page + 1)
-      if (event.key === 'ArrowUp' || event.key === 'PageUp') go(page - 1)
-      if (event.key === 'Home') go(0)
-      if (event.key === 'End') go(LAST)
-      // 1–5 jump straight to a page.
-      const digit = Number(event.key)
-      if (digit >= 1 && digit <= pages.length) go(digit - 1)
-      // The deck owns the left and right keys while it is on screen; it is
-      // the thing the reader is most obviously pointing at.
-      if (page === 2) return
-      if (event.key === 'ArrowRight') go(page + 1)
-      if (event.key === 'ArrowLeft') go(page - 1)
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [go, page])
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (!entry.isIntersecting) continue
+          entry.target.classList.add('is-in')
+          observer.unobserve(entry.target)
+        }
+      },
+      { threshold: 0.12, rootMargin: '0px 0px -6% 0px' },
+    )
+    document.querySelectorAll('[data-reveal]').forEach((el) => observer.observe(el))
+    return () => observer.disconnect()
+  }, [])
 
   return (
-    <div className="app">
-      <Snow />
-      <Corners page={page} onHome={() => go(0)} />
-
-      <main className="viewport">
-        <SceneStage page={page}>
-          {(shown) => {
-            if (shown === 1) {
-              return <AboutScene onNext={() => go(2)} instant={seen.current.has(1)} />
-            }
-            if (shown === 2) return <StudyScene onNext={() => go(3)} />
-            if (shown === 3) return <StackScene onNext={() => go(4)} />
-            if (shown === 4) return <ContactScene />
-            return <HomeScene onNext={() => go(1)} instant={seen.current.has(0)} />
-          }}
-        </SceneStage>
+    <>
+      <Hud />
+      <main>
+        <Hero />
+        <About />
+        <Work />
+        <Descent />
+        <Lab onCracked={() => setCracked(true)} />
+        <Contact cracked={cracked} />
       </main>
-
-      <StepRail page={page} onGo={go} />
-
-      {/* A page change is silent to a screen reader: nothing gains focus and
-          the rail only swaps an aria-current. This is the one place the
-          change is spoken. */}
-      <p className="sr-only" aria-live="polite">
-        {`Page ${page + 1} of ${pages.length}: ${pages[page].label}`}
-      </p>
-    </div>
+    </>
   )
 }

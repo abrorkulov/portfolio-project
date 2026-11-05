@@ -1,10 +1,26 @@
-# CLAUDE.md — Hello :)
+# CLAUDE.md — abrorkulov.uz
 
-Personal site for **Jahongir Abrorkulov** (15, Tashkent, Uzbekistan) — frontend, backend and AI.
-Five pages, one screen each, black and milky white, snow falling behind everything. React + Vite +
-GSAP + three.js, deployed on Vercel at `abrorkulov.uz`.
+Personal site for **Jahongir Abrorkulov** (16, Tashkent, Uzbekistan): full-stack engineer who also
+goes below the API (C++, process memory, reverse engineering). React + Vite + raw WebGL2, deployed
+on Vercel at `abrorkulov.uz`.
 
 All copy is in **English**.
+
+---
+
+## The idea
+
+**Full stack, actually full.** Most full-stack stops at the database; this one goes down to the
+register. The page is laid out as that descent, and every design decision serves it:
+
+| # | id | component | ground | what it is |
+|---|---|---|---|---|
+| 0 | `#top` | `Hero.tsx` | black | The name, huge. Compiles from bytes on arrival, breaks into its own hex under the pointer, melts on scroll. |
+| 1 | `#about` | `About.tsx` | black | One sentence read by scrolling, then a spec table. |
+| 2 | `#work` | `Work.tsx` | bone | Four sticky project panels, then a list. Real screenshots. |
+| 3 | `#stack` | `Descent.tsx` | black | L6 Interface to L0 Machine: 3D plates peel away as you scroll. |
+| 4 | `#lab` | `Lab.tsx` | black | A working crackme on a real x86 emulator, and field notes on `cs2-cheat`. |
+| 5 | `#contact` | `Contact.tsx` | ember | The whole page finally spends the accent. Changes if the crackme was beaten. |
 
 ---
 
@@ -17,355 +33,200 @@ All copy is in **English**.
 | Preview the build | `npm run preview` → http://localhost:4173 |
 | Lint | `npm run lint` |
 | Typecheck only | `npx tsc --noEmit -p tsconfig.json` |
-| Format a file | `npx prettier --no-semi --single-quote --write <file>` |
+| Format a file | `npx prettier --no-semi --single-quote --print-width 100 --write <file>` |
 
 There is **no test suite**. Verification = typecheck + lint + build + looking at the preview.
 
-> **Prettier has no config file.** Always pass `--no-semi --single-quote`. Running bare `npx prettier`
-> rewrites the whole file to double quotes and semicolons, which does not match this codebase.
+> **Prettier has no config file.** Always pass those flags, or it rewrites the file to double quotes
+> and semicolons, which does not match this codebase.
 
 ---
 
 ## Architecture
 
-Vite + React 18. **No router, no scrolling narrative, no Tailwind.** One page is on screen at a
-time; `App` holds an index into `pages` and `SceneStage` plays the hand-off between them.
+Vite + React 18. **No router, no CSS framework, no animation library, no 3D library.** The only
+runtime dependencies are `react` and `react-dom`. Do not add GSAP, Framer Motion, three.js or
+Tailwind back without a reason the existing tools cannot cover: leaving them out is why the first
+load is about 64 kB of gzipped JS.
 
 ```
-index.html            Meta/SEO/JSON-LD, the non-blocking Google Fonts <link>, favicon, manifest
-api/contact.ts        A Vercel edge function that forwards a message to a Telegram bot. Nothing
-                      on the site posts to it any more — kept because the Vercel environment
-                      variables for it already exist and a contact form may come back.
-src/main.tsx          Entry. Registers the service worker (PROD only).
-src/App.tsx           The page index, the URL hash, the keyboard and the swipe/wheel gestures.
-src/index.css         The entire stylesheet. Hand-written; there is no CSS framework.
+index.html            Meta/SEO/JSON-LD, font preloads, the .js class set before first paint
+api/contact.ts        Vercel edge function forwarding to a Telegram bot. Nothing posts to it; kept
+                      because its environment variables exist and a contact form may come back.
+src/main.tsx          Entry. Registers the service worker (PROD only). The devtools greeting.
+src/App.tsx           Section order, the one reveal observer, the `cracked` state.
+src/index.css         The entire stylesheet. Hand-written.
 src/data/site.ts      Every string on the site.
-vite.config.ts        Build config. Read the manualChunks comment before touching it.
+public/fonts/         Self-hosted variable woff2 (see Performance).
+public/work/          Project screenshots, 1920x1080 webp.
 public/sw.js          Service worker. Read the fetch-handler comment before touching it.
 ```
-
-### The five pages
-
-| # | hash | file | what it is |
-|---|---|---|---|
-| 0 | `#home` | `scenes/HomeScene.tsx` | "Hello :)" written out letter by letter, then `press me !` |
-| 1 | `#about` | `scenes/AboutScene.tsx` | four typed lines, then the `next` pill |
-| 2 | `#study` | `scenes/StudyScene.tsx` | the glass deck: Cambridge, Najot Ta'lim, MARS IT School |
-| 3 | `#stack` | `scenes/StackScene.tsx` | three cards: frontend, backend, AI engineering |
-| 4 | `#contact` | `scenes/ContactScene.tsx` | Telegram, GitHub, LinkedIn, email |
-
-The hash is written with `replaceState`, not assigned — this is a label on the current page, not a
-place in the visitor's history. The back button should leave the site, not walk them backwards
-through five screens they already saw. A `hashchange` listener still honours a hand-edited or
-linked-to hash.
-
-### `src/components/`
-
-| File | Role |
-|---|---|
-| `SceneStage.tsx` | Holds one page and plays the change. Owns the entrance stagger. |
-| `Snow.tsx` | The weather. Two tiled CSS layers plus the lazy WebGL field. |
-| `SnowGL.tsx` | three.js point sprites: the real snow, plus the burst pool the page throws flakes into. Lazy, and only where WebGL exists. |
-| `Carousel.tsx` | The study deck — 3D arc, drag, arrows, chips, measured height. |
-| `StepRail.tsx` | The bottom panel, with a highlight that slides between pages. |
-| `Corners.tsx` | Name top-left, `01 ——— 05` page count top-right. On every page. |
-| `Spotlight.tsx` | A pool of milky light that trails the pointer, behind the glass. Also writes `--px/--py` for the parallax. Fine pointer only. |
-| `GlowArrow.tsx` | The one navigation control, in a round and a pill form. |
-| `SceneHeader.tsx` | Numbered eyebrow + a title that assembles letter by letter out of a blur. |
-| `BrandIcon.tsx` | Four brand marks, inlined as paths. |
 
 ### `src/lib/`
 
 | File | Role |
 |---|---|
-| `useTypewriter.ts` | Types lines one character at a time off a single rAF. |
-| `env.ts` | `prefersReducedMotion`, `canRunWebGL`, `isCompact`. All read live. |
-| `warp.ts` | The one number the snow speeds up by during a page change (and, longer, on arrival). |
-| `snowfx.ts` | The bridge from the page to the snow: pointer/ripple state, `spark()`, `trail()`, `dissolve(el)`, `useCaretSparks()`. Every call is a no-op until SnowGL has mounted. |
-| `useNow.ts` | Tashkent time (ticks on the minute) and weather (Open-Meteo, no key, once per visit) for the live line on the contact page. |
-| `pointer.ts` | `glass()` — glare + tilt handlers for a pane; `useMagnet()` — pulls `press me !` toward the pointer. |
-| `usePageGestures.ts` | Swipe (touch) and wheel flick (desktop) turn the page. Discrete, never bound to scroll position. |
+| `heroGL.ts` | The hero in raw WebGL2: a feedback pass for the pointer trail and a main pass for letters and bytes. |
+| `x86.ts` | The emulator: real encodings, decoded at EIP every step. `decode`, `disassemble`, `step`. |
+| `scroll.ts` | `useScrollProgress`: one rAF loop for everything the scrollbar drives. Stops itself when settled. |
+| `useNow.ts` | Tashkent time and weather (Open-Meteo, no key, once per visit) for the contact footer. |
+| `env.ts` | `prefersReducedMotion`, `isCompact`. Read live. |
+
+### `src/components/`
+
+`Hud` (top bar and the descending address), `Hero`, `About`, `Work`, `Descent`, `Lab`, `Contact`,
+`Scramble` (a label that decodes itself once, and on hover), `BrandIcon` (inlined brand marks).
 
 ---
 
-## Stack
+## Content rule: nothing invented
 
-React 18 · TypeScript 5.6 (strict) · Vite 5 · GSAP 3 · three (raw, no R3F) · ESLint 9 flat config.
+**Every claim on the site must be checkable against a public repo.** This site is read by engineers,
+and a single made-up number costs all of it. No metrics, no client names, no tools he has not used.
 
-Framer Motion, Tailwind, PostCSS, recharts, lucide-react and the React-Three ecosystem were all
-removed with the previous version of the site. Do not reintroduce one without a reason that the
-existing tools cannot cover.
+- Routes, tables and function names on the stack plates come from the real repos (Hamshira README,
+  `cs2-cheat/Core/MemoryMgr.h`).
+- The projects' own landing pages contain demo figures (students, tonnage). Screenshots are framed
+  on inner pages or cropped above those rows so they are not presented as this site's claims.
+- **Check that a `*.vercel.app` URL is his before linking it.** Short names belong to strangers:
+  `hackaton`, `job-finder`, `farm-platform`, `sotuv-sayt`, `hamshirago-web` and `bozor-marketplace`
+  on vercel.app are all other people's sites. Compare against the repo's stack and `<title>`.
+- JobFinder is deliberately linked to source only: its live `/jobs` page calls `localhost:5000`.
+  Add `live` to it in `site.ts` once the production API is connected.
 
 ---
 
 ## Code style
 
 - **Single quotes, no semicolons, 2-space indent.** Match surrounding code.
-- **Comments explain *why*, never *what*.** Several comments in this repo record a bug that was
-  fixed and why the code must stay that way — do not delete them.
+- **Comments explain *why*, never *what*.** Several record a bug that was fixed and why the code must
+  stay that way. Do not delete them.
 - **Content lives in `site.ts`; components render it.**
 
 ---
 
 ## Design rules
 
-### Two faces, and one job each
+### Type
 
 | Family | Variable | Used for |
 |---|---|---|
-| Dancing Script | `--font-script` | the word "Hello". **Nothing else.** |
-| Sora | `--font-sans` | titles, copy, labels, numbers |
+| Archivo, 900, `font-stretch: 62%` | `--display` | Everything set large. |
+| Archivo, wider and lighter | `--display` | The hero statement and the about sentence. |
+| Martian Mono, `font-stretch: 75%` | `--mono` | Everything a machine would print, and all small copy. |
 
-The handwriting is the whole personality of the front page, and it dies the moment it appears
-twice. If something else needs emphasis, it gets a weight or a size, not the script.
+No third face. Emphasis is a size, a weight or ember.
 
-### One colour, and one accent that only the hand brings
+### Colour
 
-Pure black, and a milky off-white (`--milk: #f4f0e8`) at four strengths. The one accent is ice
-(`--ice: #b7dcff`, `--ice-rgb` for alphas) and it appears **only under the pointer**: the glowing
-edge of a pane, a lit chip, the halo of a hovered button.
-Nothing is ice at rest, so the page keeps its single colour until something is touched. The
-brand marks on the contact page are milky at rest and find their own colour on hover. A previous
-version of this site was teal and violet; that is gone on purpose, and a second accent, or the
-ice used as a fill or as resting type, puts the whole palette back.
+`--ink #050505`, `--bone #ece7dc`, `--ember #ff4a1c`. **One accent.** Ember marks what is live or hot;
+it only becomes a ground in `#contact` (and the ACCESS GRANTED band). The chromatic edge in the hero
+was RGB and looked cheap; it is an ember ghost now. Do not add a second accent, glass, gradients as
+decoration, or rounded cards: those are what made the previous versions read as a template.
 
-Pure `#fff` is deliberately not used for type: against pure black it glares and reads cold.
+### Not on this site, on purpose
 
-### Glass, and the rule that keeps it working
+Snow, handwritten script, glass panes, a drawn cursor, a comet, fog behind the content. All were here
+in earlier versions. The system pointer is the pointer.
 
-The study cards, the stack cards, the contact rows, the buttons and the panel are all real
-`backdrop-filter` glass — they frost the snow falling behind them.
+### The hero (`heroGL.ts`, `Hero.tsx`)
 
-**`backdrop-filter` samples the nearest backdrop root, and a `filter`, `mask` or `opacity` on any
-ancestor becomes one.** A card inside such an ancestor frosts its own empty box instead of the
-page, and the snow behind it disappears. That is why:
+- The real `<h1>` stays in the DOM, sized by `fitLines`. It is what a screen reader, reduced-motion
+  visitor or machine without WebGL2 gets, and the shader rasterises from its measured rects. With GL
+  running its colour is `transparent`.
+- Each **character cell** samples the trail at its centre and picks solid letter or bytes, which is
+  what makes the edge break up per character instead of fading like a brush.
+- The bytes are the hex of `heroBytes` in `site.ts`, not noise. It can actually be read.
+- The canvas font must use the keyword form (`900 extra-condensed …`); it is the only way to reach the
+  width axis from a 2D context.
+- **Phones get a different break:** JAHON / GIR / ABROR / KULOV, at `window.innerWidth < 720`.
+- Nothing waits for the shader. `painted` is forced after 1.8 s whatever happens.
+- With no pointer activity for 2.6 s the stroke wanders by itself, so the effect is found on a phone.
+- It drops to DPR 1 once, if it cannot hold frame rate. Once only, so the picture never pulses.
 
-- the deck has **no edge mask** — the outer cards simply run off the side of the page, and
-  `html { overflow-x: hidden }` stops that widening the document;
-- the neighbour blur is a `filter` on `.deck-face`, which is fine because it is *on* the card,
-  not above it;
-- `SceneStage` animates a blur during a page change and then `clearProps: 'filter'`, so no filter
-  is left standing on an ancestor at rest.
+### Scroll
 
-On `(pointer: coarse)` every backdrop filter is turned off and the fills become opaque. Against
-pure black nobody can tell, and a phone cannot afford the deck, the chips and the panel all making
-the compositor re-read their backdrop on every frame.
+`useScrollProgress` modes: `pin` (tall section with a sticky child), `through`, `enter`. Rects are all
+read before any callback writes. **Nothing scroll-driven touches React state.** `body` uses
+`overflow-x: clip`, not `hidden`: `hidden` makes it a scroll container and kills every sticky.
 
-### Glass that answers the pointer
+### Plates (`Descent.tsx`)
 
-Every pane (`.stack-card`, `.social-card`, `.deck-face`) carries `.glass`, and the flat ones
-also `.tilt`. `glass()` in `pointer.ts` writes `--mx/--my/--rx/--ry` straight onto the element on
-`pointermove` and the stylesheet draws the glare (`::after`), the icy edge that lights up where
-the pointer is (`::before`, a radial gradient masked down to a one-pixel ring) and the lean —
-**no React state on hover**. It returns `{}` on a coarse pointer, so a phone never binds the
-handlers. `.deck-face` used to own its `::before` for a lit top edge; that is now an inset
-box-shadow so the glass edge can have the pseudo-element.
+`preserve-3d` lives on `.plates`. No `opacity` or `filter` on that element or it flattens to a plane;
+opacity belongs on each `.plate`. Each layer gets a plateau in the scroll mapping so the reader rests
+on a layer instead of sliding through at constant speed.
 
-Two things follow from `.tilt` owning `transform`:
+### Crackme (`Lab.tsx`, `x86.ts`)
 
-- the hover lift is `--lift`, not a `transform` in the `:hover` rule;
-- `SceneStage` passes `clearProps: 'transform,opacity'` on the `data-enter` stagger. Without it
-  the `translate(0, 0)` gsap leaves inline outranks the class and the cards never lean.
+```
+int check(int key) { return (key ^ 0x5A5A) == 0x1337 }   // key is 0x496D
+```
 
-### Gestures
+Two ways in, both real: the key, or the one-byte patch `75 → 74` (JNE → JE) at `0x40100D`. Unknown
+bytes fault as `#UD`; a jump outside the image is an access violation; runs stop at 256 steps, and
+after 24 steps a run stops animating so a patched loop never holds the visitor.
 
-`usePageGestures` turns the page on a vertical swipe or a wheel flick, one page per gesture, with
-a 900 ms cooldown. A page taller than the screen still scrolls normally: the gesture only counts if
-the document was **already** at the edge when it began. Trackpad inertia is handled by requiring
-160 ms of wheel silence before a new gesture can start. If the wheel behaviour is ever unwanted,
-delete the `wheel` listener and leave the touch ones. Keys: `↑ ↓ PgUp PgDn Home End 1–5`, and
-`← →` outside the deck.
-
-### The page change
-
-Forward throws the current page up and out and brings the next one in from below; back does the
-reverse. At the same moment `pulseWarp()` sends the snow into a short surge past the camera —
-that is the part that actually sells the distance. Everything inside a page marked `data-enter`
-is staggered in by `SceneStage`, so a page only has to say which of its blocks are worth
-announcing.
-
-### Home
-
-"Hello" is painted with a gradient clipped to its glyphs so a pass of icy light can run along the
-letters every seven seconds (`sheen`). Because the type is transparent, the glow is a
-`drop-shadow` filter on the `h1`, not a `text-shadow` — a text-shadow would show through the
-letters. The breathing animation is on the `h1` too, so the compositor fades the filtered layer
-instead of re-rastering the filter every frame. On a coarse pointer the filter is one narrow
-shadow and the breathing is off.
-
-### Magnets
-
-`press me !`, both pill arrows and both round deck arrows are pulled toward a nearby pointer by
-`useMagnet`. The magnet always moves a wrapper `span.magnet`, never the button — the button has
-its own transition on `transform`, and the two must not share an element.
-
-### Reveals that must not strand
-
-The `press me !` button and the `next` pill appear when their typing finishes, and they are
-revealed by **a class and a CSS transition, not a tween**. A tween interrupted mid-flight — by a
-reverted GSAP context, by a page change landing at the wrong moment — leaves the element stranded
-at whatever opacity it had reached. The one control that opens the site is not left to that. This
-was an actual bug, found in a headless browser where rAF ticks are sparse.
-
-### The deck
-
-`Carousel.tsx`. Three rules:
-
-1. **`transform-style: preserve-3d` on `.deck-stage`.** A `perspective` parent still places its
-   children in 3D without it, but paints them in DOM order — so the card behind draws over the
-   one in front.
-2. **The stage's height is measured, not fixed.** The cards are absolutely positioned, so the
-   stage has no height of its own; a fixed one overlapped everything the moment a card wrapped to
-   one more line. A `ResizeObserver` writes the tallest card's height onto the stage and onto
-   `--deck-h`, which is also what hangs the side arrows level with the middle of the card.
-3. **A faded card must stop accepting the pointer.** `pointerEvents` is driven off React state
-   (`reachable`), not off the tween — an invisible card still swallows clicks meant for the one
-   in front of it, and reading that off a live motion value would cost a render per frame.
-
-The deck position is a float written straight onto the elements and never through React state:
-a drag would otherwise re-render the page on every `pointermove`. `DRAG_STEP` (320px per card) is
-the first number to change if the drag feels heavy or twitchy.
-
-Below 640px there is no room for a control column beside a card worth reading, so the arrows drop
-out of their absolute position and back into the chip row. **Below 640px the deck is also
-clipped at the screen edge** (`.deck-viewport` bleeds through the shell padding with
-`overflow: hidden`): a phone browser widens its layout viewport to fit the neighbour cards that
-run past the screen, and the whole page zoomed out to 890px. On a coarse pointer there is no
-backdrop filter for that clip to break. An iframe check does not reproduce this — only device
-emulation (`Emulation.setDeviceMetricsOverride` with `mobile: true`) or a real phone does.
-
-### Depth
-
-Two things make the black read as a room rather than a backdrop, and both answer the pointer
-through `--px/--py` (written on `<html>` by `Spotlight`, -1..1, once per frame):
-
-- the **ghost numeral** behind every scene title (`.scene-ghost`, the page index at ~30vw and
-  3.5% opacity), which drifts against the pointer;
-- the **about lines**, each on its own `--depth` and sliding a little further than the one above.
-
-On a phone there is no pointer, so both simply stand still.
-
-### Phones
-
-`.viewport` is `align-items: flex-start` with `margin-block: auto` on `.stage`: that centres a
-short page and lets a tall one start at the top instead of overflowing both ends. Below 640px the
-stack grid becomes a horizontal scroll-snap row (`.stack-grid`), because three cards on top of each
-other ran under the panel. The contact `copy` buttons are always visible under `(hover: none)`.
-
-### Snow
-
-`SnowGL.tsx` is a few thousand additive point sprites. Both wraps — the fall and the drift toward
-the camera — happen **in the vertex shader**: doing them in JavaScript would mean touching tens of
-thousands of floats and re-uploading the position buffer every frame. Pointer position lives in a
-local, never in state, for the same reason.
-
-The snow answers the page, and every one of those answers goes through `lib/snowfx.ts`:
-
-- **The pointer pushes the field apart** and the flakes it touches glow — done in screen space
-  in the vertex shader after projection, so near and far flakes both move. Fine pointers only.
-- **A tap sends a ring** through the field (`ripple`), any pointer, plus a few sparks.
-- **A moving pointer leaves a wake** (`trail()`): two flakes per move, drifting down.
-- **Bursts** are a second `Points` with a 4096-entry ring buffer. Each flake is stamped with its
-  birth time and integrates its own path on the GPU, so a burst costs one buffer upload and
-  nothing per frame. Sizes are roughly double the falling snow's: the burst plane (`BURST_Z`)
-  is twice as far as where the visible flakes are.
-- **`dissolve(el)`** rasterises an element's text with its computed font (and letter-spacing)
-  onto a canvas, samples it on a grid and throws the samples outward and toward the camera.
-  `App` calls it on every headline — `.home-word`, `.home-smile`, `.scene-title`,
-  `.about-line` — at the moment a page change is requested, not on unmount, because by then the
-  page has already been faded and thrown off the top.
-- **`useCaretSparks`** fires a spark from the caret whenever the typed count grows. 36 flakes
-  per letter of "Hello", 5 per character on the about page.
-
-On arrival SnowGL calls `pulseWarp(2.8)`: the field rushes past the camera while the first word
-is being written.
-
-The tiled CSS layers in `Snow.tsx` paint on the first frame and never leave. They are the only
-snow a reduced-motion or software-rendered visitor sees, and they give the GL field something to
-fall in front of while its chunk arrives.
-
-There is deliberately **no comet / shooting star**, **no fog behind the snow** and **no drawn
-cursor**. All three were there, and each was asked for to be removed: the black and the snow
-alone are the background, and the system pointer is the pointer.
-
-### The live line
-
-The contact page ends with "right now in tashkent — 19:37 · −3°, snowing". `useNow` renders the
-clock only once it has a value, so the line never flashes a bare prefix; the weather is a single
-Open-Meteo request per visit and the line simply carries the time alone if it fails.
+The verdict is reported from **one effect watching `cpu`**, never from a state updater, because
+StrictMode runs updaters twice.
 
 ---
 
-## Performance notes
+## Bugs worth remembering
 
-- **Never name `three` in `manualChunks`.** A manual chunk is pulled into the entry's preload
-  graph, which downloads the whole renderer before the first character of "Hello" is on screen.
-  Left alone, Rollup keeps it inside the lazy chunk that imports it.
-- **`canRunWebGL()` probes before importing.** Without it the three.js chunk downloads on devices
-  that can never paint a frame of it.
-- **The Google Fonts `<link>` must not block rendering.** It loads as `media="print"` and is
-  promoted on load, with a `<noscript>` fallback.
-- **Nothing decorative runs per-frame through React.** The snow's pointer, the warp value, the
-  deck position and the parallax properties are all plain objects or inline styles written
-  outside React.
+Each of these happened, and each comes back the moment someone tidies the code:
 
-First paint is HTML + CSS (~3.5 kB gz) + `index` (~81 kB gz). `SnowGL` (~118 kB gz) arrives after,
-and only where WebGL exists and reduced-motion is off.
+- **`data-reveal` nodes must not have a state-driven `className`.** The observer adds `is-in` directly
+  to the node; React then overwrites `className` on the next render and the element goes back to
+  `opacity: 0`. The debugger vanished at the exact moment it was beaten. The hero lost `is-gl` the same
+  way. Observed nodes get static classes; stateful classes go on a child, or through state.
+- **Reduced motion is `transition: none`, not `transition-duration: 0.01ms`.** A tiny duration still
+  starts a transition on every property including `font-size`, and `fitLines` measures straight after
+  writing a size. It read stale values and set the name at a fraction of its size.
+- **Never `loseContext()` in `dispose`.** StrictMode remounts; `getContext` on the same canvas would
+  hand back the dead context.
+
+---
+
+## Performance
+
+- First load: HTML + CSS (~6.5 kB gz) + JS (~64 kB gz) + two fonts (128 kB, preloaded). Images are lazy.
+- **Fonts are self-hosted on purpose.** The hero rasterises from the real font, so a late font is not a
+  flash of the wrong type but a shader drawing the wrong letters. `heroGL` waits on `document.fonts.load`.
+- The hero loop stops when off screen or hidden. The scroll loop stops when settled.
+- On a phone the sticky stacking in `Work` is off: a panel cannot promise to fit the screen.
 
 ---
 
 ## Service worker (`public/sw.js`) — read before editing
 
 Navigation requests are **network-first**; only `/assets/*` (content-hashed) is cache-first. It was
-cache-first on everything with a fixed cache name, which meant every deploy served returning
-visitors a stale `index.html` pointing at asset hashes that no longer existed → **blank white
-page**. If you change the strategy, bump `CACHE_NAME` (currently `signal-portfolio-v3`).
+cache-first on everything with a fixed cache name, which meant every deploy served returning visitors a
+stale `index.html` pointing at asset hashes that no longer existed → **blank white page**. If you change
+the strategy, bump `CACHE_NAME` (currently `signal-portfolio-v5`).
 
 ---
 
-## Verified
+## Verifying
 
-Checked in a real rendering engine (headless Chrome against `npm run preview`) at 1440×900 and at
-390px in an iframe:
+Driven over CDP from a Node script using the built-in `WebSocket` (no puppeteer), against
+`--headless=new --use-angle=swiftshader --enable-unsafe-swiftshader`, which runs rAF and WebGL2.
 
-- All five pages render, in order, with the panel highlight on the right item.
-- Typecheck, lint and build are clean.
-- `press me !` and the `next` pill are present and clickable once their typing lands.
-- The study card's glass shows the snow softened behind it; the neighbour card is blurred and
-  runs off the edge of the page as intended.
-- At 390px: the deck fits one screen, the arrows sit in the chip row, and nothing is clipped —
-  the page is allowed to scroll if a card runs long.
-
-Interactive behaviour (skip-on-click, the deck's trackpad swipe, the dissolve, the pointer
-wake) was driven over CDP from a Node script using the built-in `WebSocket` — no puppeteer —
-against `--headless=new --use-angle=swiftshader`, which does run rAF and WebGL. The Chrome
-extension's automation tab sits in a background window, so rAF never ticks there and every GSAP
-tween looks frozen: it is not a bug in the site.
-
-Two notes for whoever verifies this next, both of which cost time:
-
-- **Headless Chrome has a minimum window width of 500px.** `--window-size=390,844` renders at 500
-  and crops the screenshot to 390, which looks exactly like a broken layout. Render the site in a
-  390px-wide `<iframe>` inside a wider page instead; an iframe gets its own viewport for media
-  queries.
-- **rAF ticks are sparse under `--virtual-time-budget`**, so anything driven by
-  `requestAnimationFrame` — the typewriter, GSAP — is caught part-way through even with a 30s
-  budget. `--force-prefers-reduced-motion` skips the typing and collapses the transitions, which
-  is how the settled layout was actually seen. It also disables the WebGL snow, so the field looks
-  thinner in those screenshots than it is.
+- Phones: `Emulation.setDeviceMetricsOverride` with `mobile: true`. `--window-size` has a 500 px minimum
+  and crops, which looks exactly like a broken layout.
+- Reduced motion: `Emulation.setEmulatedMedia`.
+- The Chrome extension's automation tab sits in a background window where rAF never ticks, so everything
+  looks frozen there. That is not a bug in the site.
+- Scrolling in a script: set `scrollBehavior = 'auto'` first, or a long smooth scroll is still in flight
+  when the screenshot fires.
 
 ---
 
 ## Next steps
 
-1. **Flip through it on a real trackpad and a phone.** Drag feel is the one thing a harness cannot
-   judge: `DRAG_STEP` in `Carousel.tsx` is the number to change, and `metrics()` above it controls
-   how far the neighbouring cards sit out and turn.
-2. **`instagram` and `discord` are still bare placeholders** in the old profile data and are not
-   rendered. `socials` in `site.ts` lists only the four that are real; add a row when there is a
-   handle to put in it.
-3. **Decide about `api/contact.ts`.** Nothing posts to it. Either bring a contact form back or
-   delete the file and the two Vercel environment variables (`TELEGRAM_BOT_TOKEN`,
-   `TELEGRAM_CHAT_ID`).
-4. Optional: `SnowGL` at 466 kB raw trips Vite's chunk-size warning. It is lazy and gated, so this
-   is cosmetic; importing narrower three.js modules would quiet it.
+1. **Real screenshots for HamshiraGo.** It has a drawn roles panel only because there is no public build.
+   Set `image` on the project in `site.ts` to replace it.
+2. **Connect JobFinder's production API**, then add its `live` URL.
+3. **Name the reversing tools** he actually uses (debugger, disassembler) in the L0 layer. Left out
+   because no repo shows them.
+4. **Decide about `api/contact.ts`.** Nothing posts to it. Either bring a form back or delete the file and
+   its two Vercel environment variables (`TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`).
