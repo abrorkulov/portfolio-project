@@ -34,7 +34,7 @@ export const mix3 = (a: Vec3, b: Vec3, t: number): Vec3 => [
 ]
 
 export type BodyId =
-  'earth' | 'moon' | 'mars' | 'jupiter' | 'saturn' | 'uranus' | 'neptune' | 'pluto'
+  'earth' | 'moon' | 'mars' | 'jupiter' | 'saturn' | 'uranus' | 'neptune' | 'clauding' | 'pluto'
 
 export type Body = {
   id: BodyId
@@ -137,6 +137,19 @@ export const BODIES: Record<BodyId, Body> = {
     tint: [0.22, 0.34, 0.62],
     haze: [0.35, 0.5, 0.85],
     hazeAmount: 0.3,
+  },
+  // Made up, and the page says so. The orbit and the map are invented; the sky behind it is not.
+  clauding: {
+    id: 'clauding',
+    radius: 5.2,
+    au: 34.6,
+    lon0: 275,
+    rate: 0.00484,
+    tilt: 18,
+    spin: 0.01,
+    tint: [0.6, 0.3, 0.18],
+    haze: [0.92, 0.58, 0.4],
+    hazeAmount: 0.2,
   },
   pluto: {
     id: 'pluto',

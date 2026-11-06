@@ -4,7 +4,7 @@ import { flyTo, measureAnchors, routePosition } from './lib/route'
 import Hud from './components/Hud'
 import Lab from './components/Lab'
 import Space from './components/Space'
-import { About, Also, Contact, Hero, Leg, ProjectStop, Stack } from './components/Stops'
+import { About, Also, Clauding, Contact, Hero, Leg, ProjectStop, Stack } from './components/Stops'
 import { route, work } from './data/site'
 
 /**
@@ -101,10 +101,12 @@ export default function App() {
         ))}
         <Also />
         <Leg index={6} />
-        <Lab onCracked={() => setCracked(true)} />
+        <Clauding />
         <Leg index={7} />
-        <Stack />
+        <Lab onCracked={() => setCracked(true)} />
         <Leg index={8} />
+        <Stack />
+        <Leg index={9} />
         <Contact cracked={cracked} />
       </main>
     </>

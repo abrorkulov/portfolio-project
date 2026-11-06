@@ -1,6 +1,7 @@
+import Album from './Album'
 import BrandIcon from './BrandIcon'
 import { useNow } from '../lib/useNow'
-import { about, contact, hero, legs, meta, socials, stack, work } from '../data/site'
+import { about, clauding, contact, hero, legs, meta, socials, stack, work } from '../data/site'
 import type { Project } from '../data/site'
 
 function Arrow() {
@@ -66,7 +67,7 @@ export function About() {
 
 export function ProjectStop({ project, index }: { project: Project; index: number }) {
   return (
-    <section id={project.id} className="stop">
+    <section id={project.id} className={project.album ? 'stop stop-album' : 'stop'}>
       <div className="stop-hold">
         <article className="panel">
           <p className="label">
@@ -100,18 +101,23 @@ export function ProjectStop({ project, index }: { project: Project; index: numbe
             </ul>
           ) : null}
           <p className="tools">{project.stack.join(', ')}</p>
-          <p className="links">
-            {project.live ? (
-              <a href={project.live} target="_blank" rel="noreferrer">
-                {work.liveLabel}
-                <Arrow />
-              </a>
-            ) : null}
-            <a href={project.repo} target="_blank" rel="noreferrer">
-              {work.sourceLabel}
-              <Arrow />
-            </a>
-          </p>
+          {project.live || project.repo ? (
+            <p className="links">
+              {project.live ? (
+                <a href={project.live} target="_blank" rel="noreferrer">
+                  {work.liveLabel}
+                  <Arrow />
+                </a>
+              ) : null}
+              {project.repo ? (
+                <a href={project.repo} target="_blank" rel="noreferrer">
+                  {work.sourceLabel}
+                  <Arrow />
+                </a>
+              ) : null}
+            </p>
+          ) : null}
+          {project.album ? <Album title={project.title} photos={project.album} /> : null}
         </article>
       </div>
     </section>
@@ -139,6 +145,29 @@ export function Also() {
               </li>
             ))}
           </ul>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+export function Clauding() {
+  return (
+    <section id="clauding" className="stop">
+      <div className="stop-hold">
+        <div className="panel">
+          <p className="label">{clauding.label}</p>
+          <h2 className="title title-project">{clauding.title}</h2>
+          <p className="body">{clauding.body}</p>
+          <dl className="spec">
+            {clauding.spec.map((row) => (
+              <div key={row.key}>
+                <dt>{row.key}</dt>
+                <dd>{row.value}</dd>
+              </div>
+            ))}
+          </dl>
+          <p className="hero-note">{clauding.note}</p>
         </div>
       </div>
     </section>

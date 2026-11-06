@@ -17,14 +17,15 @@ continuous camera flight. Scrolling moves the camera; there are no sections slid
 |---|---|---|---|
 | 0 | `#top` | Earth | The real Earth now: the night side is where night is. Tashkent is pinned, with live time and weather. |
 | 1 | `#about` | Moon | Earthrise over the lunar horizon. The one sentence that says who he is. |
-| 2 | `#hamshira` | Mars | HamshiraGo |
-| 3 | `#agrovest` | Jupiter | AgroVest |
-| 4 | `#maktab` | Saturn | Maktab AI |
-| 5 | `#jobfinder` | Uranus | JobFinder |
-| 6 | `#also` | Neptune | Everything else |
-| 7 | `#lab` | Pluto | The x86 crackme and `cs2-cheat`. "Not officially a planet. Not officially allowed." |
-| 8 | `#stack` | Milky Way | The camera pulls out of the disc until the whole galaxy is in frame. |
-| 9 | `#contact` | Deep field | Thousands of galaxies, the contact links, and a button that flies back to Tashkent. |
+| 2 | `#bandpen` | Mars | BandPen, the owner's main project, with a stack of paper prints (`Album`) |
+| 3 | `#hamshira` | Jupiter | HamshiraGo |
+| 4 | `#agrovest` | Saturn | AgroVest |
+| 5 | `#maktab` | Uranus | Maktab AI |
+| 6 | `#also` | Neptune | Everything else, JobFinder first |
+| 7 | `#clauding` | Clauding | A made-up planet about building with Claude. It says it is made up. |
+| 8 | `#lab` | Pluto | The x86 crackme and `cs2-cheat`. "Not officially a planet. Not officially allowed." |
+| 9 | `#stack` | Milky Way | The camera pulls out of the disc until the whole galaxy is in frame. |
+| 10 | `#contact` | Deep field | Thousands of galaxies, the contact links, and a button that flies back to Tashkent. |
 
 The previous version was huge type in black and orange. The owner rated it 5/10: "just a style".
 **Do not bring back big type or neon.** The wow is the world; type stays small and quiet.
@@ -88,7 +89,7 @@ React), `x86.ts` (the emulator), `useNow.ts` (Tashkent time and weather), `env.t
 ### `src/components/`
 
 `Space` (mounts the engine, the pin, the stills fallback), `Hud` (bar, route rail, distance readout),
-`Stops` (Hero, About, ProjectStop, Also, Stack, Contact, Leg), `Lab`, `BrandIcon`.
+`Stops` (Hero, About, ProjectStop, Also, Clauding, Stack, Contact, Leg), `Album`, `Lab`, `BrandIcon`.
 
 ---
 
@@ -116,6 +117,7 @@ been checked against the clock). Planet longitudes for the date (mean elements, 
 degrees). Every distance and light-time in the readout. The bytes and instructions in the crackme.
 
 **Deliberately not real, and never claimed:**
+- Clauding does not exist. Its orbit, size and map (`clauding.webp`, painted procedurally) are invented, and the page says "Not on any NASA map". Do not use Anthropic's logo on it: nothing here may look affiliated.
 - The Moon is at half its real distance and held at a fixed angle to the Sun, so Earthrise is never a dark disc.
 - Clouds are a fixed map that drifts slowly, not today's weather.
 - Atmosphere shell is thickened threefold, with coefficients scaled to keep the colour, or it would not show.
@@ -131,6 +133,8 @@ degrees). Every distance and light-time in the readout. The bytes and instructio
 not used. And check a `*.vercel.app` URL is his before linking it: `hackaton`, `job-finder`, `farm-platform`,
 `sotuv-sayt`, `hamshirago-web` and `bozor-marketplace` on vercel.app all belong to strangers. Compare against the
 repo's stack and `<title>`. JobFinder links to source only, because its live `/jobs` calls `localhost:5000`.
+BandPen is the one exception to "checkable": its repo is private, so it has no source link. It has no live link
+until the owner opens it to the public. Its screenshots come from a local demo account, never from real students.
 
 **Texture credit is a licence condition, not a courtesy:** the planet and sky maps are Solar System Scope, CC BY 4.0, via
 Wikimedia Commons. Pluto is NASA (public domain). The star catalog is the Yale BSC5. The line in `contact.credits` must stay.
@@ -145,6 +149,7 @@ Wikimedia Commons. Pluto is NASA (public domain). The star catalog is the Yale B
   that is not a star. Colour comes from the planets.
 - **Panels** sit left, the world right, on a soft radial scrim (`.panel::before`), because what ends up behind the
   words depends on the hour: sometimes it is the lights of Europe.
+- **The album is the one exception to the palette:** warm paper and BandPen's red pen, because a print on paper in the middle of space is the point. It stays on `#bandpen`.
 - **Phones:** the world on top, words below over a gradient, and the readout moves to the top.
 - **Earth is framed by sliding along Tashkent's latitude** toward the terminator (`orbitDirection`). A great-circle
   slide ended up over the Arctic, looking at the pole, and the map stopped looking like Earth.

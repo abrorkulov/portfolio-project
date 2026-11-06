@@ -17,18 +17,19 @@ export const meta = {
 export const route = [
   { id: 'top', name: 'Earth' },
   { id: 'about', name: 'Moon' },
-  { id: 'hamshira', name: 'Mars' },
-  { id: 'agrovest', name: 'Jupiter' },
-  { id: 'maktab', name: 'Saturn' },
-  { id: 'jobfinder', name: 'Uranus' },
+  { id: 'bandpen', name: 'Mars' },
+  { id: 'hamshira', name: 'Jupiter' },
+  { id: 'agrovest', name: 'Saturn' },
+  { id: 'maktab', name: 'Uranus' },
   { id: 'also', name: 'Neptune' },
+  { id: 'clauding', name: 'Clauding' },
   { id: 'lab', name: 'Pluto' },
   { id: 'stack', name: 'Milky Way' },
   { id: 'contact', name: 'Deep field' },
 ] as const
 
 export const nav = [
-  { href: '#hamshira', label: 'Work' },
+  { href: '#bandpen', label: 'Work' },
   { href: '#lab', label: 'Lab' },
   { href: '#stack', label: 'Stack' },
   { href: '#contact', label: 'Contact' },
@@ -58,7 +59,7 @@ export const about = {
     { key: 'Languages', value: 'Uzbek, Russian, English (IELTS 6.0)' },
     { key: 'Studying', value: "AI Engineering, Najot Ta'lim" },
     { key: 'Started', value: 'Frontend, MARS IT School' },
-    { key: 'Building now', value: 'HamshiraGo' },
+    { key: 'Building now', value: 'BandPen' },
   ],
 }
 
@@ -76,6 +77,7 @@ export const legs = [
   { line: 'Saturn.', sub: '1.4 billion km. Sunlight takes 79 minutes.' },
   { line: 'Uranus.', sub: '2.9 billion km. It rolls around the Sun on its side.' },
   { line: 'Neptune.', sub: '4.5 billion km. The Sun is just a very bright star now.' },
+  { line: 'This is where the maps stop.', sub: 'The next world is not on any of them.' },
   {
     line: 'That bright star is the Sun.',
     sub: '5.9 billion km behind us. Past the last planet, I take things apart.',
@@ -83,6 +85,8 @@ export const legs = [
   { line: 'Leaving.', sub: 'From here on, everything you can see is a star.' },
   { line: 'The Milky Way is a dot now.', sub: 'One of about two trillion.' },
 ]
+
+export type Photo = { src: string; alt: string; caption: string }
 
 export type Project = {
   id: string
@@ -92,10 +96,12 @@ export type Project = {
   status: string
   summary: string
   stack: string[]
-  repo: string
+  /** Left out when the source is private. */
+  repo?: string
   live?: string
   image?: string
   imageAlt?: string
+  album?: Photo[]
   /** A project with no public build gets how it works instead of a screenshot. */
   roles?: { name: string; does: string }[]
 }
@@ -105,8 +111,54 @@ export const work = {
   liveLabel: 'Open live',
   projects: [
     {
-      id: 'hamshira',
+      id: 'bandpen',
       world: 'Mars',
+      title: 'BandPen',
+      kind: 'IELTS school with an AI tutor',
+      status: 'My full focus, in active development',
+      summary:
+        'Write an essay and get it back in red pen: every mistake corrected over the word and explained in Russian, Uzbek or English. All four IELTS skills, lessons, drills, teacher groups and a Telegram bot. The AI marks against the official descriptors, and the server computes the band.',
+      stack: [
+        'React',
+        'TypeScript',
+        'Tailwind CSS',
+        'FastAPI',
+        'SQLAlchemy',
+        'PostgreSQL',
+        'Gemini API',
+        'Playwright',
+      ],
+      album: [
+        {
+          src: '/work/bandpen-review.webp',
+          alt: 'An essay marked in red pen beside its band report, labelled as an example',
+          caption: 'The essay comes back in red pen',
+        },
+        {
+          src: '/work/bandpen-dashboard.webp',
+          alt: 'A demo student dashboard with skills, next step, streak and study calendar',
+          caption: 'Dashboard, on a demo account',
+        },
+        {
+          src: '/work/bandpen-path.webp',
+          alt: 'A learning route of connected steps from the first test onward',
+          caption: 'The route from first test to exam day',
+        },
+        {
+          src: '/work/bandpen-achievements.webp',
+          alt: 'Levels and awards earned through study',
+          caption: 'Levels and awards, on a demo account',
+        },
+        {
+          src: '/work/bandpen-hero.webp',
+          alt: 'The BandPen landing page, with paper sheets on a navy desk',
+          caption: 'The landing page',
+        },
+      ],
+    },
+    {
+      id: 'hamshira',
+      world: 'Jupiter',
       title: 'HamshiraGo',
       kind: 'Home nursing service',
       status: 'In active development',
@@ -122,7 +174,7 @@ export const work = {
     },
     {
       id: 'agrovest',
-      world: 'Jupiter',
+      world: 'Saturn',
       title: 'AgroVest',
       kind: 'B2B contract farming',
       status: 'Live, frontend',
@@ -136,7 +188,7 @@ export const work = {
     },
     {
       id: 'maktab',
-      world: 'Saturn',
+      world: 'Uranus',
       title: 'Maktab AI',
       kind: 'Learning network, hackathon',
       status: 'Live',
@@ -148,24 +200,17 @@ export const work = {
       image: '/work/maktab.webp',
       imageAlt: 'The Maktab AI homework scanner screen',
     },
-    {
-      id: 'jobfinder',
-      world: 'Uranus',
-      title: 'JobFinder',
-      kind: 'Job board',
-      status: 'Full stack',
-      summary:
-        'A job board that shows the salary, the team and the actual work before you spend an evening applying. A React client on a typed API, translated with i18next.',
-      stack: ['React', 'Zustand', 'i18next', 'Express', 'Prisma', 'Zod'],
-      repo: `${GH}/Job-Finder`,
-      image: '/work/jobfinder.webp',
-      imageAlt: 'The JobFinder landing page with its search bar',
-    },
   ] as Project[],
   also: {
     label: 'Neptune',
     title: 'Also built',
     items: [
+      {
+        title: 'JobFinder',
+        does: 'A job board that shows the salary, the team and the actual work up front',
+        stack: 'React, Zustand, i18next, Express, Prisma, Zod',
+        href: `${GH}/Job-Finder`,
+      },
       {
         title: 'Biznes Baza',
         does: 'CRM for a business database and the team working it',
@@ -192,6 +237,19 @@ export const work = {
       },
     ],
   },
+}
+
+/** The one made-up world on the route, and it says so. */
+export const clauding = {
+  label: 'Not on any NASA map',
+  title: 'Clauding',
+  body: 'Every other world on this route is real. This one I made up, because it is where the work happens now. Claude is the one AI I build with. I bring the idea and make the calls, and it helps turn them into working software, fast.',
+  spec: [
+    { key: 'Orbit', value: 'Somewhere past Neptune' },
+    { key: 'Surface', value: 'Mostly diffs' },
+    { key: 'Crew', value: 'One human, one Claude' },
+  ],
+  note: 'Yes, it helped write this sentence.',
 }
 
 export const lab = {
@@ -234,8 +292,8 @@ export const stack = {
   title: 'Everything I work with, from the screen down to the instruction.',
   layers: [
     { title: 'Interface', tools: 'React, TypeScript, React Native, Expo, Tailwind, WebGL' },
-    { title: 'Services', tools: 'Node.js, Express, Zod, JWT, Python, LLM APIs' },
-    { title: 'Data', tools: 'PostgreSQL, Prisma, SQL' },
+    { title: 'Services', tools: 'Node.js, Express, FastAPI, Zod, JWT, Python, LLM APIs' },
+    { title: 'Data', tools: 'PostgreSQL, Prisma, SQLAlchemy, SQL' },
     { title: 'Infrastructure', tools: 'Docker, Vercel, Railway, Render, Git' },
     { title: 'Native', tools: 'C++, C, C#, .NET, Win32, ImGui' },
     { title: 'Memory', tools: 'Process memory, offsets, pointer chains, struct layout' },

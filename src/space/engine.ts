@@ -76,6 +76,7 @@ const MAPS: Record<string, string> = {
   'saturn-ring': 'saturn-ring.webp',
   uranus: 'uranus.webp',
   neptune: 'neptune.webp',
+  clauding: 'clauding.webp',
   pluto: 'pluto.webp',
 }
 
@@ -88,6 +89,7 @@ const NEEDS: string[][] = [
   ['saturn', 'saturn-ring'],
   ['uranus'],
   ['neptune'],
+  ['clauding'],
   ['pluto'],
 ]
 
@@ -100,6 +102,7 @@ const BODY_LOOK: Partial<
   saturn: { relief: 0, detail: 0, flat: 0, banded: 1 },
   uranus: { relief: 0, detail: 0, flat: 0, banded: 0.4 },
   neptune: { relief: 0, detail: 0, flat: 0, banded: 0.4 },
+  clauding: { relief: 0, detail: 0, flat: 0, banded: 1 },
   pluto: { relief: 1.4, detail: 0.2, flat: 0.55, banded: 0 },
 }
 
@@ -533,7 +536,7 @@ export function createSpace(options: SpaceOptions): Space | null {
     const i0 = Math.floor(stopFloat)
     const i1 = Math.min(i0 + 1, LAST_SOLAR)
     let pose =
-      i0 === i1 ? poses[i0] : blendPose(poses[i0], poses[i1], stopFloat - i0, i0 === 1 || i0 === 6)
+      i0 === i1 ? poses[i0] : blendPose(poses[i0], poses[i1], stopFloat - i0, i0 === 1 || i0 === 7)
 
     // Arrival: falling toward orbit from further out, the only unscrolled move.
     const sinceReady = ready ? (now - readyAt) / 1000 : 0

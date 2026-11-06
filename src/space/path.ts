@@ -183,7 +183,7 @@ function earthrisePose(world: World, portrait: boolean): Pose {
   }
 }
 
-export const LAST_SOLAR = 7
+export const LAST_SOLAR = 8
 
 export function solarPoses(world: World, portrait: boolean, aspect: number): Pose[] {
   const lens: Lens = { portrait, aspect }
@@ -238,6 +238,12 @@ export function solarPoses(world: World, portrait: boolean, aspect: number): Pos
       world,
       'neptune',
       { dist: 5.4, phase: -76, elev: 6, shift: [0.42, 0.03], sky: 1.2, exposure: 1.55, roll: -10 },
+      lens,
+    ),
+    framed(
+      world,
+      'clauding',
+      { dist: 5.2, phase: -66, elev: 8, shift: [0.44, 0.0], sky: 1.1, exposure: 1, roll: 12 },
       lens,
     ),
     framed(
@@ -331,7 +337,7 @@ const MOONS: { stop: number; radius: number; orbit: number; x: number; y: number
   { stop: 3, radius: 0.413, orbit: 15, x: -2.7, y: 0.96, tint: [0.42, 0.38, 0.33] },
   { stop: 4, radius: 0.404, orbit: 20.3, x: -3.3, y: -1.1, tint: [0.72, 0.5, 0.24] },
   { stop: 6, radius: 0.212, orbit: 14.3, x: -1.85, y: 0.9, tint: [0.6, 0.55, 0.52] },
-  { stop: 7, radius: 0.51, orbit: 16.5, x: -2.1, y: -1.2, tint: [0.3, 0.28, 0.27] },
+  { stop: 8, radius: 0.51, orbit: 16.5, x: -2.1, y: -1.2, tint: [0.3, 0.28, 0.27] },
 ]
 
 export type Moon = { stop: number; position: Vec3; radius: number; tint: Vec3 }
@@ -361,5 +367,6 @@ const STOP_BODIES: BodyId[] = [
   'saturn',
   'uranus',
   'neptune',
+  'clauding',
   'pluto',
 ]
